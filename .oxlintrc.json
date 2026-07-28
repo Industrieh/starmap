@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc", "unicorn", "react", "jsx-a11y", "import", "promise"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    // runtime JSX automatique (React 19 + "jsx": "react-jsx") : pas d'import React
+    "react/react-in-jsx-scope": "off",
+    // `import './styles.css'` est un import d'effet de bord légitime
+    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css"] }]
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "ignorePatterns": ["dist", "src/data/galaxy.json"],
+  "overrides": [
+    {
+      "files": ["scripts/**/*.ts", "vite.config.ts"],
+      "env": {
+        "node": true,
+        "browser": false
+      }
+    }
+  ]
+}
