@@ -73,6 +73,7 @@ export {
   lanesOf,
   neighboursOf,
   stationsOf,
+  systemOf,
   type Route,
 } from './core/query'
 

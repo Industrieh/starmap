@@ -18,6 +18,7 @@ import {
   neighboursOf,
   orbitPos,
   stationsOf,
+  systemOf,
   systemPositions,
   type Vec2,
 } from '../src/index'
@@ -56,6 +57,32 @@ describe('indexes', () => {
   test('stationsOf gathers stations across all planets', () => {
     expect(stationsOf(sol).map((s) => s.id)).toEqual(['earth-st0', 'shipyard'])
     expect(stationsOf(kepler)).toEqual([])
+  })
+})
+
+describe('ownership', () => {
+  test('a planet reaches every gate of its own system', () => {
+    expect(systemOf(galaxy, 'earth')?.gates.map((g) => g.id)).toEqual(['sol-gate0'])
+  })
+
+  test('any kind of object finds its system', () => {
+    for (const id of ['earth', 'sol-p0', 'shipyard', 'sol-gate0', 'sol-ast0', 'sol-star']) {
+      expect(systemOf(galaxy, id)).toBe(sol)
+    }
+  })
+
+  test('a system id returns that same system', () => {
+    expect(systemOf(galaxy, 'vega')).toBe(galaxy.systems[1])
+  })
+
+  test('an unknown id returns null', () => {
+    expect(systemOf(galaxy, 'nowhere')).toBeNull()
+  })
+
+  test('a prebuilt index gives the same answer as the galaxy', () => {
+    const index = indexGalaxy(galaxy)
+    expect(systemOf(index, 'earth')).toBe(systemOf(galaxy, 'earth'))
+    expect(systemOf(index, 'nowhere')).toBeNull()
   })
 })
 

@@ -121,6 +121,47 @@ export function stationsOf(system: StarSystem): Station[] {
   return system.planets.flatMap((p) => p.stations)
 }
 
+/**
+ * The system an object belongs to, from its id alone.
+ *
+ * Only `Station` carries a pointer back to its parent; a planet, gate or
+ * asteroid field does not know where it sits. This walks the ownership the other
+ * way, for any kind of object — so everything in a system is one hop from
+ * anything else in it.
+ *
+ * A system id returns that same system, which is what makes the helper safe to
+ * call on an id you have not inspected.
+ *
+ * Pass a `Galaxy` and it indexes the whole universe on every call. In a render
+ * loop, build the index once with {@link indexGalaxy} and pass that instead.
+ *
+ * @returns `null` if no object carries that id.
+ *
+ * @example The gates a planet can reach without leaving its system
+ * ```ts
+ * systemOf(galaxy, 'earth')?.gates       // every gate in Sol, not just one
+ *
+ * const index = indexGalaxy(galaxy)      // built once
+ * systemOf(index, 'earth')?.gates        // same answer, no rescan
+ * ```
+ */
+export function systemOf(source: Galaxy | GalaxyIndex, id: string): StarSystem | null {
+  const index = isGalaxy(source) ? indexGalaxy(source) : source
+  const entry = index.get(id)
+  if (!entry) return null
+  const owner = index.get(entry.systemId)
+  return owner?.kind === 'system' ? owner.obj : null
+}
+
+/**
+ * Tells the two accepted sources apart. `instanceof Map` would be the obvious
+ * test and the wrong one: it fails on a map built in another realm — a worker,
+ * an iframe.
+ */
+function isGalaxy(source: Galaxy | GalaxyIndex): source is Galaxy {
+  return Array.isArray((source as Galaxy).systems)
+}
+
 /** A route found by {@link findRoute}. */
 export interface Route {
   /** Ids of every system on the way, start and destination included. */

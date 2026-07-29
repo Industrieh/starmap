@@ -196,7 +196,13 @@ Build the indexes once after `createGalaxy()` and keep them. Each call walks the
 whole universe.
 
 ```ts
-import { connectedComponents, findRoute, indexGalaxy, stationsOf } from '@cotontigeh/starmap'
+import {
+  connectedComponents,
+  findRoute,
+  indexGalaxy,
+  stationsOf,
+  systemOf,
+} from '@cotontigeh/starmap'
 
 // Is every system reachable? The library does not check this for you.
 const parts = connectedComponents(galaxy)
@@ -218,6 +224,10 @@ route?.jumps // 1
 route?.systemIds // ["sol", "alpha"]
 
 stationsOf(galaxy.systems[0]) // every station across every planet
+
+// Walk ownership upwards: from any object id, its system — and everything in it.
+systemOf(galaxy, 'earth')?.gates // every gate Earth can fly to, not just one
+systemOf(index, 'earth')?.gates // same, reusing the index above
 ```
 
 ## Animate it
@@ -347,6 +357,7 @@ guarantees do not survive serialization.
 | `neighboursOf(galaxy, id)`    | systems one jump away                    |
 | `connectedComponents(galaxy)` | groups of mutually reachable systems     |
 | `stationsOf(system)`          | every station in a system                |
+| `systemOf(source, id)`        | the system an object belongs to          |
 | `findRoute(galaxy, a, b)`     | shortest weighted path (Dijkstra)        |
 
 ### Geometry

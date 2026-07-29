@@ -323,11 +323,19 @@ whole structure, so callers build an index once and keep it.
 | `lanesOf`             | one pass over the lanes       |
 | `neighboursOf`        | builds an index, then filters |
 | `stationsOf`          | one pass over one system      |
+| `systemOf`            | two lookups, index or not     |
 | `connectedComponents` | BFS over the whole network    |
 | `findRoute`           | Dijkstra, see below           |
 
 `IndexEntry` is a discriminated union on `kind`, so `entry.kind === 'station'`
 narrows `entry.obj` to `Station` with no cast.
+
+`systemOf` is the one helper that reads ownership upwards. Only `station` holds a
+pointer to its parent, so the round trip goes through the index instead:
+`id → entry.systemId → the system entry`. It takes `Galaxy | GalaxyIndex` — the
+galaxy for a one-off call, an index you already built for a render loop. The two
+are told apart by `Array.isArray(source.systems)`, not `instanceof Map`, which
+would fail on a map built in another realm.
 
 `connectedComponents` builds an adjacency map, flood-fills from each unseen
 system, and returns the groups largest first. A healthy galaxy returns exactly

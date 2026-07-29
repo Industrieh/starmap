@@ -247,6 +247,18 @@ if (entry?.kind === 'station') {
 `systemId` lets you recover an object's context from its id alone — handy for a
 detail panel or for game logic.
 
+`systemOf()` wraps that round trip: it takes an id and hands back the whole
+`StarSystem`, so anything a planet shares with its neighbours — the gates, the
+asteroid fields, the other planets — is one call away.
+
+```ts
+systemOf(galaxy, 'earth')?.gates // every gate in Earth's system
+systemOf(index, 'earth')?.gates // same, from an index you already built
+```
+
+It accepts a `Galaxy` or a `GalaxyIndex`, returns `null` on an unknown id, and
+returns the system itself if you hand it a system id.
+
 ## Open unions
 
 `FactionId`, `PlanetType`, `StationType`, `StarClass`, `Richness`, `GateStatus`
