@@ -26,22 +26,6 @@
         "@cotontigeh/starmap-render": "workspace:*",
       },
     },
-    "examples/interactive-react": {
-      "name": "@cotontigeh/example-interactive-react",
-      "version": "0.0.0",
-      "dependencies": {
-        "@cotontigeh/starmap": "workspace:*",
-        "@cotontigeh/starmap-render": "workspace:*",
-        "react": "^19.2.8",
-        "react-dom": "^19.2.8",
-      },
-      "devDependencies": {
-        "@types/react": "^19.2.17",
-        "@types/react-dom": "^19.2.3",
-        "@vitejs/plugin-react": "^6.0.4",
-        "vite": "^8.1.5",
-      },
-    },
     "examples/playground": {
       "name": "@cotontigeh/example-playground",
       "version": "0.0.0",
@@ -84,8 +68,6 @@
     "@cotontigeh/example-basic": ["@cotontigeh/example-basic@workspace:examples/basic"],
 
     "@cotontigeh/example-basic-svg-generation": ["@cotontigeh/example-basic-svg-generation@workspace:examples/basic-svg-generation"],
-
-    "@cotontigeh/example-interactive-react": ["@cotontigeh/example-interactive-react@workspace:examples/interactive-react"],
 
     "@cotontigeh/example-playground": ["@cotontigeh/example-playground@workspace:examples/playground"],
 
