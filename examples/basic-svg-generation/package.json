@@ -1,0 +1,15 @@
+{
+  "name": "@cotontigeh/example-basic-svg-generation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runnable example: describe a universe, draw it as SVG files.",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cotontigeh/starmap": "workspace:*",
+    "@cotontigeh/starmap-render": "workspace:*"
+  }
+}
