@@ -3,3 +3,11 @@ dist
 examples/*/out
 .DS_Store
 *.log
+
+# The Python environment of the `webapp-testing` skill. Rebuilt from scratch by
+# the commands in the README — nothing here is worth committing.
+.venv
+
+# Where the Playwright MCP server drops what it captures: screenshots, page
+# snapshots, console logs. Session output, not sources.
+.playwright-mcp

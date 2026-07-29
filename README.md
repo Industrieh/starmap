@@ -84,6 +84,37 @@ bun run --filter './packages/*' build
 pass from the root, with a single config. A fan-out would be slower and would
 allow rules to drift from one package to the next.
 
+## Driving a browser
+
+`apps/docs` is the first thing in this repo that has to be _looked at_ rather
+than asserted about, so the repo carries two ways to drive a real browser
+against it. They overlap, and that is deliberate — they fail in different
+places.
+
+**The Playwright MCP server**, declared in [`.mcp.json`](.mcp.json). The agent
+calls browser actions as tools, one per turn: navigate, click, read the console,
+snapshot the accessibility tree. Nothing to install beyond the browsers; `npx`
+fetches the server. Best for looking around and for short interactions.
+
+**The `webapp-testing` skill**, in `.agents/skills/webapp-testing/`, installed
+from `anthropics/skills`. The agent writes a Python Playwright script and runs
+it. Slower to start, but it is a real program: loops, assertions, multiple
+pages, and `scripts/with_server.py` to bring servers up and down around it. Best
+for a scripted scenario, or anything to be replayed.
+
+The skill needs a Python environment, which the repo does **not** install for
+you — `.venv` is gitignored. To rebuild it:
+
+```bash
+python3 -m venv --without-pip .venv          # this box has no ensurepip
+curl -sSL https://bootstrap.pypa.io/get-pip.py | .venv/bin/python
+.venv/bin/python -m pip install playwright
+.venv/bin/python -m playwright install chromium
+```
+
+The browsers land in `~/.cache/ms-playwright/` and are shared with the MCP
+server, which pulls its own build there via `npx playwright install chromium`.
+
 ## Conventions
 
 ### Packages resolve to their sources
