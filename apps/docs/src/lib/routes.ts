@@ -57,7 +57,7 @@ export const LIBRARIES: readonly Library[] = [
     slug: 'starmap',
     packageName: '@cotontigeh/starmap',
     name: 'starmap',
-    version: '0.2.0',
+    version: '0.1.0',
     tagline: 'Describe, validate and query a star universe.',
     summary:
       'The core. You describe your universe with a typed object, `createGalaxy()` checks and completes it, and you get back what you need to query it: indexes, routes, orbital positions over time. No dependencies, no DOM, no notion of rendering.',

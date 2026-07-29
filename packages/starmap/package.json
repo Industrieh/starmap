@@ -1,6 +1,6 @@
 {
   "name": "@cotontigeh/starmap",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "private": true,
   "description": "A typed star-system model for JS/TS games: describe, validate, query. No dependencies, no rendering.",
   "files": [
