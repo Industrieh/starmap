@@ -9,7 +9,13 @@
   "env": {
     "es2024": true
   },
-  "ignorePatterns": ["**/dist", "**/.next"],
+  // The shadcn components are vendored, not written here: the CLI wrote them and
+  // `shadcn add <name> --diff` updates them against upstream. They trip rules we
+  // hold ourselves to — `jsx-a11y/prefer-tag-over-role` in `breadcrumb`,
+  // `no-shadow` in `sidebar` — and the only ways to satisfy them are to edit
+  // files we do not own or to weaken the rules for everyone. So they are out,
+  // exactly as they are out of oxfmt. What *uses* them is still linted.
+  "ignorePatterns": ["**/dist", "**/.next", "apps/docs/src/components/ui/**"],
   "overrides": [
     {
       // Tests, tooling and examples: a Node context.

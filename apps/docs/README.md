@@ -10,20 +10,88 @@ bun run --filter '@cotontigeh/docs' build
 
 ## What is here
 
-A [Next.js](https://nextjs.org) app — App Router, TypeScript, Tailwind CSS v4 —
-scaffolded with `create-next-app` and then folded into the conventions of the
-repo. Nothing is documented yet: the scaffold is standing and verified, the
-content comes next.
+A [Next.js](https://nextjs.org) app — App Router, TypeScript, Tailwind CSS v4,
+shadcn/ui — scaffolded with `create-next-app` and then folded into the
+conventions of the repo. **The skeleton stands; the prose does not exist yet.**
+Every doc page renders its title, its place in the tree and a marker naming the
+Markdown file it will draw from.
 
 ```
-src/app/              the routes — App Router, so a folder is a URL
-src/app/globals.css   the single stylesheet: Tailwind, shadcn, the design tokens
-src/components/ui/    the shadcn components, vendored by its CLI
-src/lib/utils.ts      `cn()`, the class merger every shadcn component imports
-public/               static assets, served from `/`
-components.json       what the shadcn CLI reads before writing anything
-next.config.ts        the app configuration
+src/app/                       the routes — App Router, so a folder is a URL
+  page.tsx                     the home page
+  docs/layout.tsx              sidebar + reading column
+  docs/[library]/              one library's overview
+  docs/[library]/[slug]/       one documentation page
+src/components/                the site's own components
+src/components/ui/             the shadcn components, vendored by its CLI
+src/lib/routes.ts              every path, and the shape of the navigation
+src/lib/utils.ts               `cn()`, the class merger shadcn components import
+src/app/globals.css            Tailwind, shadcn, the design tokens
+components.json                what the shadcn CLI reads before writing anything
 ```
+
+## The routes live in one file
+
+[`src/lib/routes.ts`](src/lib/routes.ts) holds both the paths and the tree of
+documentation pages. Nothing else in the app writes a URL as a string literal,
+and the sidebar, the header tabs, the home page and `generateStaticParams` all
+read that one structure — so **the navigation cannot drift from the routes**.
+Adding a page is a single entry there; the route appears, prerendered, at the
+next build.
+
+Two notes on the choices:
+
+- **`routes.ts`, not `route.ts`.** Inside `src/app/` the App Router reserves
+  `route.ts` for HTTP route handlers. A file with that name reads as an endpoint
+  to anyone who knows Next.js, so it is `routes.ts` — and it sits in `src/lib/`
+  because it is plain data, importable from a Server Component, a Client
+  Component or a script.
+- **Dynamic segments rather than a folder per page.** `[library]/[slug]` with
+  `generateStaticParams` means the file tree stays two files deep while the site
+  grows. The build prerenders all 21 pages as static HTML either way.
+
+## The shape of the site
+
+Two documentations under one roof, which is the whole layout problem. The answer
+is borrowed from [bun.com/docs](https://bun.com/docs) and
+[docs.deno.com](https://docs.deno.com): **one tab per library in the header**, so
+neither reads as a subsection of the other, and a sidebar that shows only the
+library you are currently in.
+
+- **Header** — logo, the library tabs, GitHub, theme. Sticky; its height is
+  `--header-height` in `globals.css`, stated once because the sidebar sticks
+  underneath it.
+- **Sidebar** — desktop only, `collapsible="none"` so this app owns the geometry
+  instead of fighting the fixed-position variants. Below `md` the same links
+  live in a `Sheet` opened from the header. Both render the same `DocsNav`, so a
+  page cannot appear in one and not the other.
+- **Footer** — full width, under everything.
+- **Theme** — `next-themes` with `attribute="class"`, three choices (light, dark,
+  system). The class lands on `<html>`, which is what
+  `@custom-variant dark (&:is(.dark *))` looks for.
+- **Backdrop** — [`StarField`](src/components/star-field.tsx), an SVG built from
+  a _seeded_ generator. `Math.random()` would give the server and the client two
+  different skies and React would call it a hydration mismatch; with a seed the
+  drawing is a pure function of a number. The lanes between near neighbours are
+  the same idea the model encodes, which is why the backdrop is the subject
+  rather than a texture.
+
+## Code blocks
+
+[`CodeBlock`](src/components/code-block.tsx) is a Server Component around
+[Shiki](https://shiki.style). It runs while the page is prerendered, so what
+reaches the browser is coloured HTML and **no highlighter ships to the client**
+— verified: no `.js` chunk in `.next/static` mentions Shiki, only a two-rule
+stylesheet.
+
+The two themes are emitted at once. Shiki writes the light colour inline on each
+token and carries the dark one as a `--shiki-dark` custom property; the rule in
+`globals.css` swaps them under `.dark`. So the code follows the theme toggle
+with no JavaScript at all.
+
+One highlighter is created for the whole build rather than one per page —
+loading grammars is the expensive part — and it is restricted to the languages
+declared in `LANGUAGES`. Add a language there before using it.
 
 ## shadcn/ui
 
@@ -36,14 +104,21 @@ npx shadcn@latest add button -c apps/docs
 npx shadcn@latest search @shadcn -q "sidebar"
 ```
 
-Three things are worth knowing before touching it.
+Four things are worth knowing before touching it.
 
 - **The components are vendored, not installed.** `src/components/ui/` is
   ordinary source code you may edit. The CLI updates it with
-  `shadcn add <name> --diff`, which compares your copy against upstream — so
-  that directory is excluded from `oxfmt` in [`.oxfmtrc.json`](../../.oxfmtrc.json).
-  Reformatting it rewrites 72% of its lines and makes every future diff
-  unreadable. `oxlint` still checks it.
+  `shadcn add <name> --diff`, which compares your copy against upstream — so that
+  directory is excluded from **both** `oxfmt` and `oxlint`. Formatting rewrites
+  72% of its lines; linting fails on rules upstream does not hold itself to
+  (`jsx-a11y/prefer-tag-over-role` in `breadcrumb`, `no-shadow` in `sidebar`).
+  Everything that _uses_ those components is formatted and linted normally.
+- **`noUnusedLocals` can trip a vendored component.** The repo's tsconfig is
+  stricter than shadcn's code: `scroll-area` shipped an unused `React` import and
+  failed the typecheck. It was unused here, so it was removed rather than
+  patched. If it happens again to a component you actually need, the choice is
+  to patch the file or to relax the flag — and patching costs you the clean
+  `--diff`.
 - **`shadcn` is a real dependency here**, not just a CLI. `globals.css` does
   `@import "shadcn/tailwind.css"`, which resolves to `dist/tailwind.css` inside
   the package. Removing it from `dependencies` breaks the build.
@@ -71,8 +146,8 @@ rather than like a fresh scaffold.
 - **No `typescript` of its own.** It uses the root's, like every other package,
   which takes one flag in [`next.config.ts`](next.config.ts) — the comment there
   explains why.
-- **The shadcn components escape `oxfmt`** — and only them. See the section
-  above for why.
+- **The shadcn components escape `oxfmt` and `oxlint`** — and only them. See the
+  section above for why.
 - **`AGENTS.md` and `CLAUDE.md`** come from
   [the Next.js guide for coding agents](https://nextjs.org/docs/app/guides/ai-agents).
   They point agents at `node_modules/next/dist/docs/`, the documentation bundled

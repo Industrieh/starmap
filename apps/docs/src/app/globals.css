@@ -52,6 +52,13 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Ours, not shadcn's. The header is sticky and the docs sidebar sits directly
+   under it, so both need the same number and neither should own it. Stated once
+   here, read as `h-(--header-height)` and `top-(--header-height)`. */
+:root {
+  --header-height: 3.5rem;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -119,6 +126,28 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Shiki, in dual-theme mode.
+
+   It writes the light colour inline on every token and carries the dark one as
+   `--shiki-dark`, so switching themes is a CSS swap and costs no JavaScript.
+   `!important` is required: the value being overridden is an inline style.
+
+   The backgrounds are dropped in both modes — the block's own surface comes from
+   `CodeBlock`, in the app's neutral palette, and a theme background would fight
+   it. */
+.shiki,
+.shiki span {
+  background-color: transparent !important;
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style);
+  font-weight: var(--shiki-dark-font-weight);
+  text-decoration: var(--shiki-dark-text-decoration);
 }
 
 @layer base {
