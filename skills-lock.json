@@ -7,6 +7,12 @@
       "skillPath": "skills/bun/SKILL.md",
       "computedHash": "8ab1e6eb90ec019585da837dce992ea22cf33992e966bd57f7544d025add0e7d"
     },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "c1a68ee06a668aced9ab2b5fbdea5f989864123794eb2e056b339a072dbb7f10"
+    },
     "tailwind-4-docs": {
       "source": "Lombiq/Tailwind-Agent-Skills",
       "sourceType": "github",
