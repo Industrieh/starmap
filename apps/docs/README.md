@@ -12,9 +12,8 @@ bun run --filter '@cotontigeh/docs' build
 
 A [Next.js](https://nextjs.org) app — App Router, TypeScript, Tailwind CSS v4,
 shadcn/ui — scaffolded with `create-next-app` and then folded into the
-conventions of the repo. **`@cotontigeh/starmap` is documented in full**;
-`starmap-render` still renders a marker on each of its pages, naming the Markdown
-it will draw from.
+conventions of the repo. **Both packages are documented in full** — 21 pages,
+every code example checked against the real libraries.
 
 ```
 src/app/                       the routes — App Router, so a folder is a URL
@@ -90,7 +89,7 @@ Two notes on the choices:
   Component or a script.
 - **Dynamic segments rather than a folder per page.** `[library]/[slug]` with
   `generateStaticParams` means the file tree stays two files deep while the site
-  grows. The build prerenders every page as static HTML either way — 24 of them
+  grows. The build prerenders every page as static HTML either way — 28 of them
   at the time of writing.
 
 ## The shape of the site

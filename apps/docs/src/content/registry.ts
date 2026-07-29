@@ -19,6 +19,17 @@
 
 import type { ComponentType } from 'react'
 
+import * as renderApi from './starmap-render/api'
+import * as renderArchitecture from './starmap-render/architecture'
+import * as renderContributing from './starmap-render/contributing'
+import * as renderDesign from './starmap-render/design'
+import * as renderDrawing from './starmap-render/drawing'
+import * as renderFraming from './starmap-render/framing'
+import * as renderInstallation from './starmap-render/installation'
+import * as renderInteractivity from './starmap-render/interactivity'
+import * as renderQuickstart from './starmap-render/quickstart'
+import * as renderRecipes from './starmap-render/recipes'
+import * as renderTheming from './starmap-render/theming'
 import * as starmapAnimating from './starmap/animating'
 import * as starmapApi from './starmap/api'
 import * as starmapArchitecture from './starmap/architecture'
@@ -57,6 +68,18 @@ const CONTENT: Record<string, DocContent> = {
   'starmap/design': starmapDesign,
   'starmap/architecture': starmapArchitecture,
   'starmap/api': starmapApi,
+
+  'starmap-render/installation': renderInstallation,
+  'starmap-render/quickstart': renderQuickstart,
+  'starmap-render/drawing': renderDrawing,
+  'starmap-render/theming': renderTheming,
+  'starmap-render/framing': renderFraming,
+  'starmap-render/interactivity': renderInteractivity,
+  'starmap-render/recipes': renderRecipes,
+  'starmap-render/design': renderDesign,
+  'starmap-render/architecture': renderArchitecture,
+  'starmap-render/contributing': renderContributing,
+  'starmap-render/api': renderApi,
 }
 
 /** The content of a page, or `undefined` while it is still to be written. */

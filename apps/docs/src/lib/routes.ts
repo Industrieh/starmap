@@ -164,22 +164,47 @@ export const LIBRARIES: readonly Library[] = [
           {
             slug: 'drawing',
             title: 'Drawing',
-            description: 'How a system and a galaxy are laid out, and what the viewBox means.',
+            description: 'The layers, and how each object is built out of them.',
           },
           {
             slug: 'theming',
             title: 'Theming',
-            description: 'The theme object: what it controls, and how to write your own.',
+            description: 'Every colour the renderer reads, and how to replace one.',
           },
           {
-            slug: 'architecture',
-            title: 'Architecture',
-            description: 'How the renderer is split, and why it emits strings.',
+            slug: 'framing',
+            title: 'Framing & embedding',
+            description: 'The viewBox, the margins, and the four ways to put a string on a page.',
+          },
+          {
+            slug: 'interactivity',
+            title: 'Making it interactive',
+            description: 'Click, hover, pan and zoom — none of it here, all of it possible.',
           },
           {
             slug: 'recipes',
             title: 'Recipes',
-            description: 'Animating, making it interactive, exporting a file.',
+            description: 'Animating, exporting a file, drawing your own overlay.',
+          },
+        ],
+      },
+      {
+        title: 'Under the hood',
+        pages: [
+          {
+            slug: 'design',
+            title: 'Design decisions',
+            description: 'Why it returns strings, and why interaction is not its job.',
+          },
+          {
+            slug: 'architecture',
+            title: 'Architecture',
+            description: 'How the renderer is split, and where a change belongs.',
+          },
+          {
+            slug: 'contributing',
+            title: 'Contributing',
+            description: 'The house rule, the checklists, and how to review a visual change.',
           },
         ],
       },
