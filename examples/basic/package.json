@@ -1,0 +1,14 @@
+{
+  "name": "@cotontigeh/example-basic",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runnable example: describe a universe by hand, build it, query it.",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cotontigeh/starmap": "workspace:*"
+  }
+}
