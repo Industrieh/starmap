@@ -1,0 +1,14 @@
+# Placeholder for the documentation site — see README.md.
+#
+# This file exists so that git tracks the folder while it is still empty. It
+# already carries the ignores of the most likely static site generators
+# (Astro/Starlight, VitePress, Nextra); prune it once the choice is made.
+
+dist
+build
+.output
+.astro
+.vitepress/cache
+.vitepress/dist
+.next
+.cache
