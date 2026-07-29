@@ -4,7 +4,7 @@
   "singleQuote": true,
   "printWidth": 100,
   "sortImports": true,
-  "ignorePatterns": ["src/data/*.json", ".agents/**", ".claude/**"],
+  "ignorePatterns": [".agents/**", ".claude/**"],
   "overrides": [
     {
       "files": ["**/*.css"],

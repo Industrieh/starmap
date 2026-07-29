@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "bun": {
+      "source": "dalestudy/skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun/SKILL.md",
+      "computedHash": "8ab1e6eb90ec019585da837dce992ea22cf33992e966bd57f7544d025add0e7d"
+    },
+    "tailwind-4-docs": {
+      "source": "Lombiq/Tailwind-Agent-Skills",
+      "sourceType": "github",
+      "skillPath": "skills/tailwind-4-docs/SKILL.md",
+      "computedHash": "de756f5f03cc20a029983875b00b9dfef9d0ba8567d242c5cbb0262037d0a134"
+    },
     "typescript-advanced-types": {
       "source": "wshobson/agents",
       "sourceType": "github",

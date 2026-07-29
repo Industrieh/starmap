@@ -1,28 +1,32 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "oxc", "unicorn", "react", "jsx-a11y", "import", "promise"],
+  "plugins": ["typescript", "oxc", "unicorn", "import", "promise"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
     "perf": "warn"
   },
-  "rules": {
-    // runtime JSX automatique (React 19 + "jsx": "react-jsx") : pas d'import React
-    "react/react-in-jsx-scope": "off",
-    // `import './styles.css'` est un import d'effet de bord légitime
-    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css"] }]
-  },
   "env": {
-    "browser": true,
     "es2024": true
   },
-  "ignorePatterns": ["dist", "src/data/galaxy.json"],
+  "ignorePatterns": ["**/dist"],
   "overrides": [
     {
-      "files": ["scripts/**/*.ts", "vite.config.ts"],
+      // Tests, tooling and examples: a Node context.
+      "files": ["**/tests/**/*.ts", "**/*.config.ts", "examples/**/*.ts"],
       "env": {
-        "node": true,
-        "browser": false
+        "node": true
+      }
+    },
+    {
+      // The React example runs in a browser instead, and imports a stylesheet
+      // there — a legitimate side-effect import.
+      "files": ["examples/interactive-react/src/**", "examples/playground/src/**"],
+      "env": {
+        "browser": true
+      },
+      "rules": {
+        "import/no-unassigned-import": "off"
       }
     }
   ]

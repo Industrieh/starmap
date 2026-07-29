@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    // No `DOM` by default: the libraries of this repo must compile against the
+    // language primitives alone. A package that genuinely needs the DOM (a
+    // browser app, for instance) adds it back in its own tsconfig.
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "types": ["node"],
+
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    // Every exported declaration must carry an explicit type, which makes it
+    // possible to emit `.d.ts` files one by one, with no global inference. Two
+    // benefits, and the second one is why the setting is here.
+    //
+    // 1. The public API is annotated, so it is readable and stable — a
+    //    signature can no longer change as a side effect of an implementation
+    //    detail.
+    // 2. tsdown then **infers** the `oxc` declaration generator, which works in
+    //    memory. Left alone it falls back to `tsgo` (the TypeScript 7 API, still
+    //    experimental), which writes an intermediate `.d.ts` next to every
+    //    source and pollutes `src/` on every build.
+    //
+    // `declaration` is required by `isolatedDeclarations`; it stays inert as
+    // long as `noEmit` is true — tsdown is what emits the shipped `.d.mts`.
+    "declaration": true,
+    "isolatedDeclarations": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+
+    // The packages of this repo resolve to their **sources**, not to their
+    // `dist/`. Without this, typechecking `starmap-render` would require
+    // building `starmap` first — and a stale `dist/` would produce phantom
+    // errors. The paths are relative to this file, so to the repo root.
+    // Remember to add an entry here for every new package.
+    "paths": {
+      "@cotontigeh/starmap": ["./packages/starmap/src/index.ts"],
+      "@cotontigeh/starmap-render": ["./packages/starmap-render/src/index.ts"]
+    }
+  }
+}

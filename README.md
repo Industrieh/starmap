@@ -1,96 +1,151 @@
-# Star Map — proto
+# starmap
 
-Carte de l'espace pour un jeu JS. **Vite 8 + Bun + React + TypeScript**, rendu SVG, données 100 % générées.
-
-## Démarrer
+A [Bun workspaces](https://bun.com/docs/guides/install/workspaces) monorepo
+around a model of a **star universe** for JavaScript / TypeScript games.
 
 ```bash
 bun install
-bun run gen      # génère src/data/galaxy.json
-bun run dev      # http://localhost:5173
-bun run check    # format (oxfmt) + lint (oxlint) + typecheck (tsc)
+bun run dev            # the playground app: generate a galaxy and fly through it
+bun run check          # format + lint + types + tests, across the repo
+bun run example        # describe a universe and query it
+bun run example:svg    # draw it as SVG
+bun run example:react  # play with it in a browser
 ```
 
-## Regénérer la galaxie
+## The map
 
-Le fichier `src/data/galaxy.json` est le seul source de vérité du monde. Il se regénère avec :
+```
+packages/     what gets published to npm
+apps/         what gets deployed
+examples/     what never leaves the repo
+```
+
+| folder                                                           | package                                    | what it is                                             |
+| ---------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------ |
+| [`packages/starmap`](packages/starmap)                           | `@cotontigeh/starmap`                      | **the core** — describe, validate and query a universe |
+| [`packages/starmap-render`](packages/starmap-render)             | `@cotontigeh/starmap-render`               | **the renderer** — a `Galaxy` or a system, as SVG      |
+| [`apps/docs`](apps/docs)                                         | —                                          | reserved for the documentation site                    |
+| [`examples/basic`](examples/basic)                               | `@cotontigeh/example-basic`                | runnable example, `private`                            |
+| [`examples/basic-svg-generation`](examples/basic-svg-generation) | `@cotontigeh/example-basic-svg-generation` | runnable example, `private`                            |
+| [`examples/interactive-react`](examples/interactive-react)       | `@cotontigeh/example-interactive-react`    | runnable example, `private`                            |
+| [`examples/playground`](examples/playground)                     | `@cotontigeh/example-playground`           | the full app, `private`                                |
+
+This three-way split is the common convention, and it carries useful
+information: a package's folder says **what happens to it**. A package in
+`packages/` is versioned and published, so its public API is a commitment. A
+package in `examples/` is `private` and will never be installed by anyone, so it
+can break without consequence. `apps/` gets deployed and never installed.
+
+## The packages
+
+**`@cotontigeh/starmap`** — the core. You describe your universe with a typed
+object, `createGalaxy()` checks and completes it, and you get back what you need
+to query it (indexes, routes, orbital positions over time). No dependencies, no
+DOM access, no notion of rendering. Its full documentation is in
+[its README](packages/starmap/README.md) and
+[`packages/starmap/docs/`](packages/starmap/docs/).
+
+**`@cotontigeh/starmap-render`** — the renderer. `renderSystem()` and
+`renderGalaxy()` turn a universe into an **SVG string**: no DOM, no framework,
+no stylesheet. Colours come in through a theme, interaction stays with the
+application. Its full documentation is in
+[its README](packages/starmap-render/README.md) and
+[`packages/starmap-render/docs/`](packages/starmap-render/docs/).
+
+## Commands
+
+All of them run from the root.
+
+| command                 | what it does                                 |
+| ----------------------- | -------------------------------------------- |
+| `bun run build`         | build every package, **in dependency order** |
+| `bun run test`          | test every package                           |
+| `bun run typecheck`     | `tsc --noEmit` on every package              |
+| `bun run lint`          | oxlint, one pass over the repo               |
+| `bun run fmt`           | oxfmt, one pass over the repo                |
+| `bun run check`         | the four above, in order                     |
+| `bun run example`       | runs `examples/basic`                        |
+| `bun run example:svg`   | runs `examples/basic-svg-generation`         |
+| `bun run example:react` | opens `examples/interactive-react` on Vite   |
+| `bun run dev`           | opens `examples/playground`, the full app    |
+
+`build`, `test` and `typecheck` are fan-outs of `bun run --filter '*' <script>`:
+Bun honours dependency order, so `starmap` is built before `starmap-render`. To
+target a single package:
 
 ```bash
-bun run gen                                         # seed aléatoire, 24 systèmes
-bun run gen -- --systems=40 --seed=cotontigeh       # déterministe
-bun run gen -- --out=src/data/autre-galaxie.json
+bun run --filter '@cotontigeh/starmap' test
+bun run --filter './packages/*' build
 ```
 
-Même seed = même galaxie (RNG `mulberry32`, aucun `Math.random` non seedé dans le contenu généré).
+`lint` and `fmt` are **not** fan-outs: oxlint and oxfmt walk the repo in one
+pass from the root, with a single config. A fan-out would be slower and would
+allow rules to drift from one package to the next.
 
-| option      | défaut                 | rôle                |
-| ----------- | ---------------------- | ------------------- |
-| `--systems` | `24`                   | nombre de systèmes  |
-| `--seed`    | aléatoire              | seed (chaîne libre) |
-| `--out`     | `src/data/galaxy.json` | fichier de sortie   |
+## Conventions
 
-## Ce que contient le monde
+### Packages resolve to their sources
 
-- **Systèmes** : position dans la galaxie, faction, indice de sécurité, étoile (classes O→M, couleur/rayon).
-- **Planètes** : 1 à 11 par système, type dépendant de la zone orbitale (interne / médiane / externe), rayon, orbite, période (Kepler simplifié), lunes, habitabilité, ressources.
-- **Stations spatiales** : en orbite autour des planètes (comptoir, minière, militaire, recherche, chantier naval), avec leur propre orbite/période.
-- **Champs d'astéroïdes** : `belt` (arc de ceinture entre deux orbites) ou `cluster` (amas), positions des blocs pré-calculées.
-- **Portes (gates)** : 1 à 3 par système, placées au-delà de la dernière orbite ; chaque porte dessert une ou plusieurs destinations. Les liaisons sont réparties entre les portes du système.
-- **Hyperlanes** : réseau inter-systèmes = k plus proches voisins + arbre couvrant minimal, donc **toujours connexe** (aucun système injoignable).
-- **Routes locales** : étoile → planètes → stations → portes → champs, avec des types (`orbital`, `shortcut`, `docking`, `jump-lane`, `mining`) rendus avec des tirets différents.
+`tsconfig.base.json` declares `paths` pointing every package of the repo at its
+`src/`, not at its `dist/`. Without that, typechecking `starmap-render` would
+require having built `starmap` first, and a stale `dist/` would produce phantom
+errors.
 
-## Utilisation de la carte
+Bun honours those `paths` at runtime, so `bun run example` also runs against the
+sources — no build needed to try something out. Vitest does not read them: a
+package that depends on another declares the equivalent alias in its
+`vitest.config.ts` (see `packages/starmap-render/vitest.config.ts`). Vite does
+not read them either, hence the two aliases in
+`examples/interactive-react/vite.config.ts`.
 
-| action                     | effet                                  |
-| -------------------------- | -------------------------------------- |
-| molette                    | zoom (centré sur le curseur)           |
-| glisser                    | déplacer la vue                        |
-| clic                       | sélectionner (détails dans le panneau) |
-| double-clic sur un système | entrer dans le système                 |
-| double-clic sur une porte  | sauter vers le système lié             |
-| `Échap`                    | revenir à la vue galaxie               |
-| `Espace`                   | pause / reprise du temps               |
-| `⏸ ×1 ×4 ×16`              | vitesse de simulation orbitale         |
+> **For every new package:** add its entry to the `paths` of
+> `tsconfig.base.json`.
 
-La barre du bas liste les systèmes voisins pour sauter directement.
+`dist/` remains what **external consumers** see: it is what `main`, `types` and
+`exports` point at, and the only thing that goes into the npm tarball (the
+`files` field).
 
-## Structure
+### Every exported declaration carries an explicit type
 
+`isolatedDeclarations` is on in `tsconfig.base.json`. In practice:
+`export function f(x: number)` does not compile, it has to be
+`export function f(x: number): string`. A default export must be annotated too,
+hence the `const config: UserConfig = defineConfig({ … })` in the config files.
+
+Two reasons, and the second is far more concrete than the first:
+
+1. **The public API is readable and stable.** A signature can no longer change
+   as a side effect of an implementation detail, because it is written down.
+2. **The build stops polluting the sources.** Left alone, tsdown infers its
+   `.d.ts` generator from the installed TypeScript version: with TypeScript 7 it
+   switches to `tsgo`, still experimental, which writes an intermediate `.d.ts`
+   **next to every source**. With `isolatedDeclarations` it infers `oxc` —
+   declarations generated in memory, twice as fast, equivalent output. The
+   tsdown configs then need nothing but `dts: true`, with no override.
+
+### Tooling at the root, dependencies in the packages
+
+`typescript`, `oxlint`, `oxfmt` and `@types/node` are devDependencies of the
+root: one version for the whole repo, and no way to end up with two versions of
+TypeScript contradicting each other.
+
+What a package needs in order to build or test itself (`tsdown`, `vitest`) lives
+in **its own** `package.json` — a package stays readable and movable on its own.
+Production dependencies too, obviously.
+
+Packages reference each other with the `workspace:*` protocol:
+
+```json
+{ "dependencies": { "@cotontigeh/starmap": "workspace:*" } }
 ```
-scripts/generate-galaxy.ts    générateur (seedé) -> src/data/galaxy.json
-src/types/galaxy.ts           contrat de données du monde (source de vérité des types)
-src/data/index.ts             chargement du JSON, typé Galaxy
-src/App.tsx                   état global : mode galaxie/système, sélection, vitesse
-src/components/GalaxyMap.tsx  vue galaxie : systèmes + hyperlanes
-src/components/SystemView.tsx vue système : étoile, orbites, planètes, stations, portes, champs
-src/components/InfoPanel.tsx  panneau de détails contextuel
-src/lib/useViewport.ts        pan + zoom sur viewBox SVG
-src/lib/useAnimationTime.ts   horloge de simulation
-src/lib/space.ts              géométrie orbitale, styles, helpers
-```
 
-`src/types/galaxy.ts` est partagé entre le générateur et l'app : modifier une forme
-de donnée casse le typecheck des deux côtés. `bun run typecheck` (ou `bun run build`,
-qui lance `tsc --noEmit` avant Vite) vérifie l'ensemble.
+### Every package stands alone
 
-Les positions animées sont recalculées à chaque frame depuis `orbite/angle/période`
-(`systemPositions`) — les routes locales suivent donc les planètes en mouvement.
+It carries its `package.json`, its `tsconfig.json` (extending
+`tsconfig.base.json`), its build and test config, its README. Only formatting,
+linting and tooling versions are shared.
 
-## Qualité
+## Publishing
 
-| commande            | rôle                                                        |
-| ------------------- | ----------------------------------------------------------- |
-| `bun run fmt`       | oxfmt, formate en place                                     |
-| `bun run fmt:check` | vérifie le formatage sans écrire                            |
-| `bun run lint`      | oxlint, `--deny-warnings` : tout avertissement fait échouer |
-| `bun run lint:fix`  | applique les corrections automatiques sûres                 |
-| `bun run typecheck` | `tsc --noEmit`                                              |
-| `bun run check`     | fmt:check + lint + typecheck                                |
-
-**Lint** — `.oxlintrc.json` : catégories `correctness` (erreur), `suspicious` et `perf`
-(avertissement), plugins `typescript`, `react`, `jsx-a11y`, `import`, `unicorn`, `promise`, `oxc`.
-Les rares exceptions sont documentées sur place par `// oxlint-disable-next-line <règle> -- <raison>`.
-
-**Formatage** — `.oxfmtrc.json` : pas de point-virgule, guillemets simples, largeur 100 (les
-guillemets doubles restent la règle en CSS). `src/data/*.json` est exclu, sa mise en forme
-appartient au générateur. Les skills vendorisées (`.agents/`, `.claude/`) sont exclues aussi.
+The packages are still `"private": true`. To publish one: drop the flag, then
+`npm publish` from its folder. The `files` field ships `dist/` and nothing else.

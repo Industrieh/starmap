@@ -1,32 +1,30 @@
 {
-  "name": "test-map-star",
-  "version": "0.0.1",
+  "name": "@cotontigeh/starmap-monorepo",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "examples/*"
+  ],
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "build": "bun run --filter '*' build",
+    "test": "bun run --filter '*' test",
+    "typecheck": "bun run --filter '*' typecheck",
     "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "check": "bun run fmt:check && bun run lint && bun run typecheck",
-    "gen": "bun scripts/generate-galaxy.ts"
-  },
-  "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "check": "bun run fmt:check && bun run lint && bun run typecheck && bun run test",
+    "dev": "bun run --filter '@cotontigeh/example-playground' dev",
+    "example": "bun run --filter '@cotontigeh/example-basic' start",
+    "example:svg": "bun run --filter '@cotontigeh/example-basic-svg-generation' start",
+    "example:react": "bun run --filter '@cotontigeh/example-interactive-react' start"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.4",
     "oxfmt": "^0.61.0",
     "oxlint": "^1.76.0",
-    "typescript": "^7.0.2",
-    "vite": "^8.1.5"
+    "typescript": "^7.0.2"
   }
 }
