@@ -16,15 +16,44 @@ repo. Nothing is documented yet: the scaffold is standing and verified, the
 content comes next.
 
 ```
-src/app/         the routes — App Router, so a folder is a URL
-src/app/globals.css   the single stylesheet, where Tailwind is imported
-public/          static assets, served from `/`
-next.config.ts   the app configuration
+src/app/              the routes — App Router, so a folder is a URL
+src/app/globals.css   the single stylesheet: Tailwind, shadcn, the design tokens
+src/components/ui/    the shadcn components, vendored by its CLI
+src/lib/utils.ts      `cn()`, the class merger every shadcn component imports
+public/               static assets, served from `/`
+components.json       what the shadcn CLI reads before writing anything
+next.config.ts        the app configuration
 ```
+
+## shadcn/ui
+
+Initialised with `--preset nova --base base`, so components are built on
+[Base UI](https://base-ui.com) and icons come from `lucide`. To add one, name
+the registry explicitly and point the CLI at this workspace:
+
+```bash
+npx shadcn@latest add button -c apps/docs
+npx shadcn@latest search @shadcn -q "sidebar"
+```
+
+Three things are worth knowing before touching it.
+
+- **The components are vendored, not installed.** `src/components/ui/` is
+  ordinary source code you may edit. The CLI updates it with
+  `shadcn add <name> --diff`, which compares your copy against upstream — so
+  that directory is excluded from `oxfmt` in [`.oxfmtrc.json`](../../.oxfmtrc.json).
+  Reformatting it rewrites 72% of its lines and makes every future diff
+  unreadable. `oxlint` still checks it.
+- **`shadcn` is a real dependency here**, not just a CLI. `globals.css` does
+  `@import "shadcn/tailwind.css"`, which resolves to `dist/tailwind.css` inside
+  the package. Removing it from `dependencies` breaks the build.
+- **The theme is one command away.** `npx shadcn@latest apply <code> --only theme`
+  swaps the palette without touching the components. Codes come from
+  [ui.shadcn.com](https://ui.shadcn.com).
 
 ## What differs from a plain `create-next-app`
 
-Five deliberate departures, so that the app looks like the rest of the repo
+Six deliberate departures, so that the app looks like the rest of the repo
 rather than like a fresh scaffold.
 
 - **No ESLint, no Prettier.** The repo lints with `oxlint` and formats with
@@ -42,6 +71,8 @@ rather than like a fresh scaffold.
 - **No `typescript` of its own.** It uses the root's, like every other package,
   which takes one flag in [`next.config.ts`](next.config.ts) — the comment there
   explains why.
+- **The shadcn components escape `oxfmt`** — and only them. See the section
+  above for why.
 - **`AGENTS.md` and `CLAUDE.md`** come from
   [the Next.js guide for coding agents](https://nextjs.org/docs/app/guides/ai-agents).
   They point agents at `node_modules/next/dist/docs/`, the documentation bundled

@@ -4,7 +4,12 @@
   "singleQuote": true,
   "printWidth": 100,
   "sortImports": true,
-  "ignorePatterns": [".agents/**", ".claude/**"],
+  // `apps/docs/src/components/ui/**` holds the shadcn components. They are
+  // vendored: the CLI wrote them, and it updates them with
+  // `shadcn add <name> --diff`, which compares them against upstream. Running
+  // oxfmt over them rewrites 72% of their lines — quotes and semicolons alone —
+  // and every future diff becomes unreadable. So they keep their own shape.
+  "ignorePatterns": [".agents/**", ".claude/**", "apps/docs/src/components/ui/**"],
   "overrides": [
     {
       "files": ["**/*.css"],
