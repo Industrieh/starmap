@@ -1,0 +1,32 @@
+{
+  "name": "@cotontigeh/starmap-render",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turn a @cotontigeh/starmap universe into SVG. Strings, not components: no DOM, no framework.",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsc --noEmit && tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cotontigeh/starmap": "workspace:*"
+  },
+  "devDependencies": {
+    "tsdown": "^0.22.14",
+    "vitest": "^4.1.10"
+  }
+}
