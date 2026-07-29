@@ -12,9 +12,9 @@ bun run --filter '@cotontigeh/docs' build
 
 A [Next.js](https://nextjs.org) app — App Router, TypeScript, Tailwind CSS v4,
 shadcn/ui — scaffolded with `create-next-app` and then folded into the
-conventions of the repo. **The skeleton stands; the prose does not exist yet.**
-Every doc page renders its title, its place in the tree and a marker naming the
-Markdown file it will draw from.
+conventions of the repo. **`@cotontigeh/starmap` is documented in full**;
+`starmap-render` still renders a marker on each of its pages, naming the Markdown
+it will draw from.
 
 ```
 src/app/                       the routes — App Router, so a folder is a URL
@@ -22,13 +22,55 @@ src/app/                       the routes — App Router, so a folder is a URL
   docs/layout.tsx              sidebar + reading column
   docs/[library]/              one library's overview
   docs/[library]/[slug]/       one documentation page
-src/components/                the site's own components
+src/content/                   the prose, one module per page
+src/components/docs/           the toolkit those pages are written with
 src/components/ui/             the shadcn components, vendored by its CLI
 src/lib/routes.ts              every path, and the shape of the navigation
 src/lib/utils.ts               `cn()`, the class merger shadcn components import
 src/app/globals.css            Tailwind, shadcn, the design tokens
 components.json                what the shadcn CLI reads before writing anything
 ```
+
+## Where the prose lives
+
+Two files decide what a documentation page is:
+
+- [`src/lib/routes.ts`](src/lib/routes.ts) — **which pages exist**, how they are
+  grouped, and their one-line descriptions. The sidebar, the header tabs and
+  `generateStaticParams` all read it.
+- [`src/content/registry.ts`](src/content/registry.ts) — **what is in them**. A
+  page is a module exporting a `toc` and a default component, under
+  `src/content/<library>/<slug>.tsx`.
+
+Adding a page is one entry in each. They can be written out of step: a page in
+`routes.ts` with no content renders a marker instead of a 404, so navigation can
+be planned before the prose exists.
+
+The content is TSX rather than Markdown, and that is a real trade. Markdown is
+faster to write and anyone can edit it; TSX gives typechecked components
+(`PropsTable`, `ApiEntry`, `Steps`, `Callout`), a `toc` that cannot drift from
+the headings, and a build that fails when a component signature changes. For a
+reference site where most pages are structured tables rather than paragraphs,
+the second set of guarantees won.
+
+### The toolkit
+
+Everything a page is built from lives in [`src/components/docs/`](src/components/docs/):
+
+| component            | what it is for                                               |
+| -------------------- | ------------------------------------------------------------ |
+| `prose.tsx`          | `H2`, `P`, `C`, `A`… — headings take an explicit `id`        |
+| `Callout`            | note / tip / warning / danger, four tones and no more        |
+| `Steps` / `Step`     | numbered walkthrough, counter in CSS so inserting renumbers  |
+| `PropsTable`         | field, type, description — the shape of every reference page |
+| `ApiEntry`           | signature, params, returns, throws, example                  |
+| `PackageManagerTabs` | one command, four package managers                           |
+| `TableOfContents`    | the right rail, tracked with an `IntersectionObserver`       |
+| `CopyButton`         | the only client-side part of a code block                    |
+
+Headings take their `id` as a required prop rather than deriving it from the
+text. The table of contents links to those ids, and a derived id breaks silently
+the day someone rewords a heading.
 
 ## The routes live in one file
 
@@ -48,7 +90,8 @@ Two notes on the choices:
   Component or a script.
 - **Dynamic segments rather than a folder per page.** `[library]/[slug]` with
   `generateStaticParams` means the file tree stays two files deep while the site
-  grows. The build prerenders all 21 pages as static HTML either way.
+  grows. The build prerenders every page as static HTML either way — 24 of them
+  at the time of writing.
 
 ## The shape of the site
 

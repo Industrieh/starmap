@@ -86,19 +86,39 @@ export const LIBRARIES: readonly Library[] = [
             description: 'What a galaxy, a system and a body are made of, and what is required.',
           },
           {
-            slug: 'design',
-            title: 'Design',
-            description: 'The decisions behind the API, and the ones deliberately left out.',
+            slug: 'querying',
+            title: 'Querying a galaxy',
+            description: 'Indexes, neighbours, routes — finding your way around the structure.',
           },
           {
-            slug: 'architecture',
-            title: 'Architecture',
-            description: 'How the modules fit together, and where to add code.',
+            slug: 'animating',
+            title: 'Animating orbits',
+            description: 'Turning a time value into positions, once per frame.',
+          },
+          {
+            slug: 'randomness',
+            title: 'Deterministic randomness',
+            description: 'Generating a universe from a seed, and getting it back tomorrow.',
           },
           {
             slug: 'recipes',
             title: 'Recipes',
             description: 'Short answers to the questions that come up twice.',
+          },
+        ],
+      },
+      {
+        title: 'Under the hood',
+        pages: [
+          {
+            slug: 'design',
+            title: 'Design decisions',
+            description: 'The three lines this library does not cross, and why.',
+          },
+          {
+            slug: 'architecture',
+            title: 'Architecture',
+            description: 'How the modules fit together, and where to add code.',
           },
         ],
       },

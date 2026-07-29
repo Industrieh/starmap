@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { createHighlighter, type BundledLanguage, type Highlighter } from 'shiki'
 
+import { CopyButton } from '@/components/docs/copy-button'
 import { cn } from '@/lib/utils'
 
 /**
@@ -8,7 +9,8 @@ import { cn } from '@/lib/utils'
  *
  * This is a Server Component: Shiki runs while the page is being prerendered and
  * what reaches the browser is plain coloured HTML — **no highlighter in the
- * client bundle**, and no flash of unstyled code.
+ * client bundle**, and no flash of unstyled code. The copy button is the one
+ * interactive part, and the only thing that ships as client JavaScript.
  *
  * The two themes are emitted at once. Shiki writes the light colour inline and
  * the dark one as a `--shiki-dark` custom property on every token; the rule in
@@ -39,6 +41,8 @@ export type CodeBlockProps = {
   lang?: (typeof LANGUAGES)[number]
   /** Shown in the window chrome above the code. Omit for a bare block. */
   filename?: string
+  /** Hides the copy button — for snippets that are illustrative, not runnable. */
+  noCopy?: boolean
   className?: string
 }
 
@@ -46,16 +50,18 @@ export async function CodeBlock({
   code,
   lang = 'ts',
   filename,
+  noCopy,
   className,
 }: CodeBlockProps): Promise<JSX.Element> {
+  const trimmed = code.trim()
   const shiki = await highlighter()
-  const html = shiki.codeToHtml(code.trim(), {
+  const html = shiki.codeToHtml(trimmed, {
     lang,
     themes: { light: 'github-light', dark: 'github-dark' },
   })
 
   return (
-    <div className={cn('overflow-hidden rounded-xl border bg-muted/30', className)}>
+    <div className={cn('group relative overflow-hidden rounded-xl border bg-muted/30', className)}>
       {filename ? (
         <div className="flex items-center gap-2 border-b px-4 py-2.5">
           <span className="size-2.5 rounded-full bg-muted-foreground/25" />
@@ -63,6 +69,15 @@ export async function CodeBlock({
           <span className="size-2.5 rounded-full bg-muted-foreground/25" />
           <span className="ml-2 font-mono text-xs text-muted-foreground">{filename}</span>
         </div>
+      ) : null}
+
+      {!noCopy ? (
+        // Always present so the layout never shifts; revealed on hover, and
+        // permanently visible once focused, so it stays reachable by keyboard.
+        <CopyButton
+          value={trimmed}
+          className="absolute top-2 right-2 z-10 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+        />
       ) : null}
 
       {/* Shiki returns a full `<pre class="shiki">…`, already escaped. The
