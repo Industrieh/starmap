@@ -23,7 +23,10 @@ export function SiteHeader(): JSX.Element {
         <MobileNav />
         <SiteLogo />
 
-        <Separator orientation="vertical" className="mx-1 hidden h-5 md:block" />
+        {/* No height class on purpose: the component already carries
+            `data-vertical:self-stretch`, so it spans the bar on its own. Pinning
+            it to `h-5` left it floating in the middle. */}
+        <Separator orientation="vertical" className="mx-2 hidden md:block" />
 
         <div className="hidden md:flex">
           <LibraryTabs />

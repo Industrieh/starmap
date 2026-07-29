@@ -35,7 +35,10 @@ export function LibraryTabs(): JSX.Element {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'relative flex h-12 items-center px-3 text-sm transition-colors',
+                  // The tab is exactly as tall as the bar, not one pixel less.
+                  // At `h-12` it was centred in a 56px bar, so the underline
+                  // below sat 4px short of the bottom border and floated.
+                  'relative flex h-(--header-height) items-center px-3 text-sm transition-colors',
                   'after:absolute after:inset-x-2 after:bottom-0 after:h-px after:bg-transparent',
                   active
                     ? 'text-foreground after:bg-foreground'
