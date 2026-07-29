@@ -9,7 +9,7 @@
   "env": {
     "es2024": true
   },
-  "ignorePatterns": ["**/dist"],
+  "ignorePatterns": ["**/dist", "**/.next"],
   "overrides": [
     {
       // Tests, tooling and examples: a Node context.
@@ -27,6 +27,27 @@
       },
       "rules": {
         "import/no-unassigned-import": "off"
+      }
+    },
+    {
+      // The documentation site. A React app, so three more plugins — they are
+      // declared here rather than at the top so that they apply to this app
+      // alone: `nextjs` rules mean nothing to the Vite examples, and turning
+      // them on globally would only produce noise.
+      "files": ["apps/docs/**"],
+      "plugins": ["react", "jsx-a11y", "nextjs"],
+      "env": {
+        "browser": true
+      },
+      "rules": {
+        // `layout.tsx` imports the stylesheet — a legitimate side effect.
+        "import/no-unassigned-import": "off",
+
+        // The rule dates from the runtime where JSX compiled to
+        // `React.createElement`. With the automatic transform (`jsx:
+        // react-jsx`, which is what Next.js uses) the import is injected, and
+        // writing it by hand is the mistake.
+        "react/react-in-jsx-scope": "off"
       }
     }
   ]

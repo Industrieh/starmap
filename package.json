@@ -17,6 +17,7 @@
     "fmt:check": "oxfmt --check",
     "check": "bun run fmt:check && bun run lint && bun run typecheck && bun run test",
     "dev": "bun run --filter '@cotontigeh/example-playground' dev",
+    "docs": "bun run --filter '@cotontigeh/docs' dev",
     "example": "bun run --filter '@cotontigeh/example-basic' start",
     "example:svg": "bun run --filter '@cotontigeh/example-basic-svg-generation' start",
     "example:react": "bun run --filter '@cotontigeh/example-interactive-react' start"

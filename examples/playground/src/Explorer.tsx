@@ -105,7 +105,10 @@ export function Explorer({ galaxy, theme, backdrop }: ExplorerProps): JSX.Elemen
         </button>
         <h1 className="text-base font-semibold">
           {here.name}
-          <span className="font-normal text-muted"> · {inside ? 'system view' : 'galaxy view'}</span>
+          <span className="font-normal text-muted">
+            {' '}
+            · {inside ? 'system view' : 'galaxy view'}
+          </span>
         </h1>
         <p className="text-muted">
           {inside

@@ -1,0 +1,24 @@
+{
+  "name": "@cotontigeh/docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The documentation site of the monorepo: the guides and the API of every package, in one place.",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^16.2.12",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

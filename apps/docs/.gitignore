@@ -1,14 +1,16 @@
-# Placeholder for the documentation site — see README.md.
-#
-# This file exists so that git tracks the folder while it is still empty. It
-# already carries the ignores of the most likely static site generators
-# (Astro/Starlight, VitePress, Nextra); prune it once the choice is made.
+# The repo-wide ignores (node_modules, logs, .DS_Store) live in the root
+# `.gitignore`. Only what is specific to this Next.js app belongs here.
 
-dist
-build
-.output
-.astro
-.vitepress/cache
-.vitepress/dist
-.next
-.cache
+# build output
+/.next/
+/out/
+
+# `next dev` and `next build` regenerate it, and its content depends on the
+# installed version of Next.js — it is not ours to commit.
+next-env.d.ts
+
+*.tsbuildinfo
+
+# deployment
+.vercel
+.env*

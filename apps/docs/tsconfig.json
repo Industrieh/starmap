@@ -1,0 +1,41 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.mts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next"],
+  "compilerOptions": {
+    // A browser app, so the DOM comes back — the libraries of the repo
+    // deliberately compile without it.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+
+    // Next.js emits nothing through `tsc`, but it reads `.tsx`, it generates
+    // route types under `.next/`, and it expects to find its editor plugin
+    // declared here.
+    "allowJs": true,
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+
+    // A page is a default export with no annotation, and the generated route
+    // types are not ours to annotate either. `isolatedDeclarations` exists so
+    // that the *libraries* can emit their `.d.ts` file by file; a site emits
+    // nothing, so the rule has nothing to protect here.
+    "isolatedDeclarations": false,
+
+    // `paths` replaces the parent's rather than merging into it, so the two
+    // entries of `tsconfig.base.json` are repeated — rewritten relative to
+    // *this* file — alongside the `@/*` alias Next.js configures. Both packages
+    // still resolve to their sources; see the note in the base config.
+    "paths": {
+      "@/*": ["./src/*"],
+      "@cotontigeh/starmap": ["../../packages/starmap/src/index.ts"],
+      "@cotontigeh/starmap-render": ["../../packages/starmap-render/src/index.ts"]
+    }
+  }
+}

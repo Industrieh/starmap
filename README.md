@@ -6,6 +6,7 @@ around a model of a **star universe** for JavaScript / TypeScript games.
 ```bash
 bun install
 bun run dev            # the playground app: generate a galaxy and fly through it
+bun run docs           # the documentation site
 bun run check          # format + lint + types + tests, across the repo
 bun run example        # describe a universe and query it
 bun run example:svg    # draw it as SVG
@@ -24,7 +25,7 @@ examples/     what never leaves the repo
 | ---------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------ |
 | [`packages/starmap`](packages/starmap)                           | `@cotontigeh/starmap`                      | **the core** — describe, validate and query a universe |
 | [`packages/starmap-render`](packages/starmap-render)             | `@cotontigeh/starmap-render`               | **the renderer** — a `Galaxy` or a system, as SVG      |
-| [`apps/docs`](apps/docs)                                         | —                                          | reserved for the documentation site                    |
+| [`apps/docs`](apps/docs)                                         | `@cotontigeh/docs`                         | the documentation site, on Next.js — `private`         |
 | [`examples/basic`](examples/basic)                               | `@cotontigeh/example-basic`                | runnable example, `private`                            |
 | [`examples/basic-svg-generation`](examples/basic-svg-generation) | `@cotontigeh/example-basic-svg-generation` | runnable example, `private`                            |
 | [`examples/interactive-react`](examples/interactive-react)       | `@cotontigeh/example-interactive-react`    | runnable example, `private`                            |
@@ -68,6 +69,7 @@ All of them run from the root.
 | `bun run example:svg`   | runs `examples/basic-svg-generation`         |
 | `bun run example:react` | opens `examples/interactive-react` on Vite   |
 | `bun run dev`           | opens `examples/playground`, the full app    |
+| `bun run docs`          | opens `apps/docs`, the documentation site    |
 
 `build`, `test` and `typecheck` are fan-outs of `bun run --filter '*' <script>`:
 Bun honours dependency order, so `starmap` is built before `starmap-render`. To
@@ -128,6 +130,13 @@ Two reasons, and the second is far more concrete than the first:
 `typescript`, `oxlint`, `oxfmt` and `@types/node` are devDependencies of the
 root: one version for the whole repo, and no way to end up with two versions of
 TypeScript contradicting each other.
+
+That rule cost something to keep in `apps/docs`: `next build` typechecks through
+the TypeScript **compiler API**, which the 7.x line no longer exposes, so
+Next.js 16 refuses it outright and asks for a TypeScript of its own. Rather than
+a second version in the repo, the app sets `experimental.useTypeScriptCli` and
+Next.js shells out to `tsc` instead — same check, four times faster. The reason
+is written in `apps/docs/next.config.ts`, next to the flag.
 
 What a package needs in order to build or test itself (`tsdown`, `vitest`) lives
 in **its own** `package.json` — a package stays readable and movable on its own.
