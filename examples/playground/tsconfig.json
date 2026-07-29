@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src", "vite.config.ts"],
+  "compilerOptions": {
+    // This one is a browser app, so it gets the DOM back — the libraries of the
+    // repo deliberately compile without it.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+
+    // An example illustrates. Unused code here is pedagogical, not a mistake.
+    "noUnusedLocals": false
+  }
+}
