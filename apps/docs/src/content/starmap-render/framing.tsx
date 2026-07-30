@@ -1,11 +1,25 @@
+import { renderSystem } from '@industrieh/starmap-render'
 import type { JSX } from 'react'
 
 import { CodeBlock } from '@/components/code-block'
 import { Callout } from '@/components/docs/callout'
 import { PropsTable } from '@/components/docs/props-table'
 import { A, C, H2, H3, LI, Lead, P, Quote, UL } from '@/components/docs/prose'
+import { RenderCompare, RenderPreview } from '@/components/docs/render-preview'
 import type { TocEntry } from '@/content/registry'
+import { SOL } from '@/content/starmap-render/fixture'
 import { routes } from '@/lib/routes'
+
+const T = 4
+
+const DEFAULT_MARGIN = renderSystem(SOL, { t: T, idPrefix: 'fr-default' })
+const NO_MARGIN = renderSystem(SOL, { t: T, idPrefix: 'fr-crop', margin: 0 })
+const BIG_MARGIN = renderSystem(SOL, { t: T, idPrefix: 'fr-room', margin: 1.2 })
+const TITLED = renderSystem(SOL, {
+  t: T,
+  idPrefix: 'fr-titled',
+  title: `${SOL.name} — ${SOL.planets.length} planets`,
+})
 
 export const toc: readonly TocEntry[] = [
   { id: 'world-units', title: 'Nothing is ever a pixel', depth: 2 },
@@ -92,10 +106,37 @@ galaxyViewBox(galaxy)
 viewBoxAttr(systemViewBox(system))   // '-435 -435 870 870'`}
       />
 
+      <RenderCompare
+        left={{
+          svg: NO_MARGIN,
+          label: (
+            <>
+              <C>margin: 0</C> — cropped to the outermost object, which here is the gate&apos;s
+              orbit.
+            </>
+          ),
+        }}
+        right={{
+          svg: DEFAULT_MARGIN,
+          label: (
+            <>
+              The default <C>0.45</C>. The same drawing, with room to breathe around it.
+            </>
+          ),
+        }}
+      />
+
       <Callout tone="tip" title="A bigger margin is how you leave room for your own overlay">
         Ship names, range circles, a selection ring — anything you draw yourself needs somewhere to
         go. Raising the margin gives it space without touching the model.
       </Callout>
+
+      <RenderPreview
+        svg={BIG_MARGIN}
+        height="sm"
+        code={`renderSystem(system, { margin: 1.2 })`}
+        caption="margin: 1.2 — the system now occupies less than half the frame, and everything outside it is yours."
+      />
 
       <P>Two degenerate cases are handled rather than left to break:</P>
 
@@ -152,6 +193,12 @@ renderSystem(system, { width: 700, height: 700 }) // exactly 700×700 pixels`}
         own background down the sides. It reads as a rendering bug, and it is the first thing you
         notice on a non-square container — which is why it is worth testing one.
       </Callout>
+
+      <RenderPreview
+        svg={DEFAULT_MARGIN}
+        height="sm"
+        caption="Every frame on this page is wider than it is tall, and the system inside it is square — so all of them are letterboxed. The reason you cannot tell is the oversized rectangle: the dark background runs edge to edge instead of stopping at the viewBox."
+      />
 
       <H2 id="embedding">Four ways to embed it</H2>
       <P>It is a string, so there is no single right answer.</P>
@@ -247,6 +294,12 @@ container.innerHTML =
 
 // <svg … role="img">
 //   <title>Sol — 2 planets</title>`}
+      />
+
+      <RenderPreview
+        svg={TITLED}
+        height="sm"
+        caption="Visually identical, and announced as “Sol — 2 planets” instead of skipped. Hover it and your browser will show the title too."
       />
 
       <P>

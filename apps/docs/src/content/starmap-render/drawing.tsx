@@ -1,11 +1,27 @@
+import { indexSystems } from '@industrieh/starmap'
+import { renderGalaxy, renderSystem } from '@industrieh/starmap-render'
 import type { JSX } from 'react'
 
 import { CodeBlock } from '@/components/code-block'
 import { Callout } from '@/components/docs/callout'
 import { PropsTable } from '@/components/docs/props-table'
 import { A, C, H2, H3, LI, Lead, P, Quote, UL } from '@/components/docs/prose'
+import { RenderCompare, RenderPreview } from '@/components/docs/render-preview'
 import type { TocEntry } from '@/content/registry'
+import { GALAXY, SOL } from '@/content/starmap-render/fixture'
 import { routes } from '@/lib/routes'
+
+const T = 4
+
+const FULL = renderSystem(SOL, { t: T, idPrefix: 'dr-full' })
+const BARE = renderSystem(SOL, { t: T, idPrefix: 'dr-bare', backdrop: 0, labels: false })
+const GATE_LABELLED = renderSystem(SOL, {
+  t: T,
+  idPrefix: 'dr-gate',
+  systems: indexSystems(GALAXY),
+})
+const MAP = renderGalaxy(GALAXY, { idPrefix: 'dr-map' })
+const EMPTY_SYSTEM = renderSystem(GALAXY.systems[2], { idPrefix: 'dr-empty' })
 
 export const toc: readonly TocEntry[] = [
   { id: 'layers', title: 'Order is the composition', depth: 2 },
@@ -40,6 +56,19 @@ export default function Content(): JSX.Element {
         decoration: it is how an application dims, hides or restyles a whole class of thing without
         the package knowing anything about it.
       </Quote>
+
+      <RenderCompare
+        left={{ svg: FULL, label: <>Everything on. This is the default.</> }}
+        right={{
+          svg: BARE,
+          label: (
+            <>
+              <C>{`{ backdrop: 0, labels: false }`}</C> — the same drawing with two layers removed,
+              which is the easiest way to see what the others are doing.
+            </>
+          ),
+        }}
+      />
 
       <H3 id="system-layers">The system layers</H3>
       <P>Bottom to top, exactly as they are emitted:</P>
@@ -126,6 +155,18 @@ export default function Content(): JSX.Element {
             description: 'A dot per system, its faction ring, its halo, its label.',
           },
         ]}
+      />
+
+      <RenderPreview
+        svg={MAP}
+        height="md"
+        caption={
+          <>
+            Five systems, five lanes, nothing highlighted. Sol and Vega wear their faction&apos;s
+            colour; Rigel, Altair and Lyra have no faction, so their ring falls back to{' '}
+            <C>factions.default</C>.
+          </>
+        }
       />
 
       <Callout tone="note" title="Nothing moves on the galaxy map">
@@ -223,12 +264,13 @@ export default function Content(): JSX.Element {
         its neighbours.
       </Callout>
 
-      <CodeBlock
-        lang="ts"
+      <RenderPreview
+        svg={GATE_LABELLED}
+        height="md"
         code={`import { indexSystems } from '@industrieh/starmap'
 
-renderSystem(system, { systems: indexSystems(galaxy) })
-// the Sol Gate is now labelled "Vega"`}
+renderSystem(system, { systems: indexSystems(galaxy) })`}
+        caption="The gate at the top right is labelled “Vega”, its destination, instead of “Sol Gate”. Without the index the renderer has no way to know — a system does not carry its neighbours."
       />
 
       <H3 id="fields">Asteroid fields</H3>
@@ -285,6 +327,13 @@ arcPath(220, 0, 360)
         when it is part of the highlighted path.
       </P>
 
+      <Callout tone="tip" title="The faction ring is dashed until it is highlighted">
+        A highlighted system gets a <em>solid</em> ring in <C>theme.highlight</C>; every other one
+        is dashed, in its faction&apos;s colour. Two channels rather than one, so the path is still
+        obvious in greyscale — the same reasoning as the{' '}
+        <A href={`${routes.page('starmap-render', 'theming')}#routes`}>route dash patterns</A>.
+      </Callout>
+
       <H2 id="empty">The empty cases</H2>
       <P>
         The core makes most fields optional, so the renderer meets them constantly. All of these
@@ -335,6 +384,12 @@ arcPath(220, 0, 360)
             ),
           },
         ]}
+      />
+
+      <RenderPreview
+        svg={EMPTY_SYSTEM}
+        height="sm"
+        caption="Rigel: a star and nothing else. No planets layer, no fields layer, no gates layer — and still a perfectly valid document."
       />
 
       <Callout tone="note" title="A name with an ampersand does not break the document">

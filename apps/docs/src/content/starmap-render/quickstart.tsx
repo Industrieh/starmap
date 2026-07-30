@@ -1,11 +1,34 @@
+import { findRoute } from '@industrieh/starmap'
+import { renderGalaxy, renderSystem } from '@industrieh/starmap-render'
 import type { JSX } from 'react'
 
 import { CodeBlock } from '@/components/code-block'
 import { Callout } from '@/components/docs/callout'
 import { A, C, H2, LI, Lead, P, Quote, UL } from '@/components/docs/prose'
+import { RenderCompare, RenderPreview } from '@/components/docs/render-preview'
 import { Step, Steps } from '@/components/docs/steps'
 import type { TocEntry } from '@/content/registry'
+import { FIXTURE_SOURCE, GALAXY, SOL } from '@/content/starmap-render/fixture'
 import { routes } from '@/lib/routes'
+
+/**
+ * Every drawing on this page, rendered at build time.
+ *
+ * `idPrefix` differs on each one because SVG ids are global to the page — two
+ * drawings sharing a prefix would both use the first one's gradients. It is the
+ * trap documented on the Framing page, and it applies here too.
+ */
+const FIRST = renderSystem(SOL, { t: 3, idPrefix: 'qs-first' })
+const MOVED = renderSystem(SOL, { t: 16, idPrefix: 'qs-moved' })
+const MAP = renderGalaxy(GALAXY, {
+  highlight: findRoute(GALAXY, 'altair', 'lyra')?.systemIds,
+  idPrefix: 'qs-map',
+})
+const RECOLOURED = renderSystem(SOL, {
+  t: 3,
+  idPrefix: 'qs-recoloured',
+  theme: { background: '#0b0f0d', planets: { terran: '#7ee787', rocky: '#8b949e' } },
+})
 
 export const toc: readonly TocEntry[] = [
   { id: 'mental-model', title: 'The mental model', depth: 2 },
@@ -63,29 +86,9 @@ export default function Content(): JSX.Element {
             this part is unfamiliar, the{' '}
             <A href={routes.page('starmap', 'quickstart')}>core Quickstart</A> covers it.
           </P>
-          <CodeBlock
-            lang="ts"
-            filename="draw.ts"
-            code={`import { createGalaxy } from '@industrieh/starmap'
-
-const galaxy = createGalaxy({
-  systems: [
-    {
-      id: 'sol', name: 'Sol', x: 0, y: 0,
-      star: { class: 'G', radius: 18 },
-      planets: [
-        { name: 'Aurelia', type: 'rocky', orbit: 90, radius: 5, period: 12 },
-        { name: 'Vesper', type: 'terran', orbit: 150, radius: 6, angle: 30, period: 24,
-          habitable: true,
-          stations: [{ name: 'High Anchorage', type: 'trade', orbit: 14, period: 4 }] },
-      ],
-      gates: [{ name: 'Sol Gate', orbit: 300, angle: 45, links: ['vega'] }],
-    },
-    { id: 'vega', name: 'Vega', x: 420, y: 160, star: { class: 'A', radius: 22 } },
-  ],
-  lanes: [{ from: 'sol', to: 'vega' }],
-})`}
-          />
+          {/* FIXTURE_SOURCE rather than a literal: this is the universe every
+              drawing below is actually made from, so the two cannot drift. */}
+          <CodeBlock lang="ts" filename="universe.ts" code={FIXTURE_SOURCE} />
         </Step>
 
         <Step title="Draw one system">
@@ -94,9 +97,12 @@ const galaxy = createGalaxy({
             lang="ts"
             code={`import { renderSystem } from '@industrieh/starmap-render'
 
-const svg = renderSystem(galaxy.systems[0], { t: 3 })
-
-svg.length   // 17647 — a string, nothing more`}
+const svg = renderSystem(galaxy.systems[0], { t: 3 })`}
+          />
+          <RenderPreview
+            svg={FIRST}
+            height="lg"
+            caption="That string, rendered. Every drawing on this page was produced by the call above it while the page was being built — none of them is a screenshot."
           />
         </Step>
 
@@ -196,6 +202,19 @@ function frame() {
 frame()`}
       />
 
+      <RenderCompare
+        left={{ svg: FIRST, label: <>The same system at t = 3.</> }}
+        right={{
+          svg: MOVED,
+          label: (
+            <>
+              And at t = 16 — Aurelia has come round, Vesper has moved on, and its station went with
+              it.
+            </>
+          ),
+        }}
+      />
+
       <Callout tone="note" title="Content, or document?">
         <C>renderSystem()</C> gives you a whole <C>&lt;svg&gt;</C> — right for a file or an{' '}
         <C>&lt;img&gt;</C>. <C>renderSystemContent()</C> gives you the layers alone, so <em>you</em>{' '}
@@ -228,6 +247,18 @@ const map = renderGalaxy(galaxy, {
 })`}
       />
 
+      <RenderPreview
+        svg={MAP}
+        height="lg"
+        caption={
+          <>
+            The route from Altair to Lyra, brought forward. Every system carries a ring: dashed and
+            in its faction&apos;s colour normally, solid and in the highlight colour when it is on
+            the path. Vega is the only one here that is not.
+          </>
+        }
+      />
+
       <P>
         <C>highlight</C> takes an ordered list of system ids. Every listed system is brought
         forward, and so is every lane between two <em>consecutive</em> entries — which is why the
@@ -250,6 +281,19 @@ const map = renderGalaxy(galaxy, {
 // background  → '#000'      your value
 // terran      → '#7ee787'   your value
 // gas         → '#d8a06a'   still the default — tables merge key by key`}
+      />
+
+      <RenderCompare
+        left={{ svg: FIRST, label: <>The default theme.</> }}
+        right={{
+          svg: RECOLOURED,
+          label: (
+            <>
+              Three values changed — the background, and two planet colours. Everything else,
+              including the star and the orbits, is still the default.
+            </>
+          ),
+        }}
       />
 
       <Callout tone="tip" title="Every table has a default entry">

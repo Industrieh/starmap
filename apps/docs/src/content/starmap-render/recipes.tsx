@@ -1,10 +1,27 @@
+import { findRoute } from '@industrieh/starmap'
+import { renderGalaxy, renderSystem } from '@industrieh/starmap-render'
 import type { JSX } from 'react'
 
 import { CodeBlock } from '@/components/code-block'
 import { Callout } from '@/components/docs/callout'
 import { A, C, H2, LI, Lead, P, UL } from '@/components/docs/prose'
+import { RenderCompare, RenderPreview } from '@/components/docs/render-preview'
 import type { TocEntry } from '@/content/registry'
+import { GALAXY, SOL } from '@/content/starmap-render/fixture'
 import { routes } from '@/lib/routes'
+
+const ROUTED = renderGalaxy(GALAXY, {
+  idPrefix: 're-routed',
+  highlight: findRoute(GALAXY, 'altair', 'lyra')?.systemIds,
+})
+const FULL = renderSystem(SOL, { t: 4, idPrefix: 're-full' })
+const THUMB = renderSystem(SOL, {
+  t: 4,
+  idPrefix: 're-thumb',
+  labels: false,
+  backdrop: 0,
+  margin: 0.1,
+})
 
 export const toc: readonly TocEntry[] = [
   { id: 'files', title: 'Export a set of files', depth: 2 },
@@ -188,6 +205,12 @@ const map = renderGalaxy(galaxy, {
 })`}
       />
 
+      <RenderPreview
+        svg={ROUTED}
+        height="md"
+        caption="Altair → Sol → Rigel → Lyra. The three lanes of the path are brought forward; the two that are not on it stay dim."
+      />
+
       <P>
         Order matters: consecutive entries light the lane between them. Passing an unordered set of
         ids highlights the systems and none of the lanes.
@@ -208,6 +231,19 @@ const map = renderGalaxy(galaxy, {
   backdrop: 0,      // a few hundred circles nobody will see
   margin: 0.1,      // crop closer — a thumbnail wants the subject, not the void
 })`}
+      />
+
+      <RenderCompare
+        left={{ svg: FULL, label: <>The full drawing.</> }}
+        right={{
+          svg: THUMB,
+          label: (
+            <>
+              The thumbnail settings. Note that nothing shrank — the objects keep their real sizes;
+              what changed is what is drawn and how tightly it is framed.
+            </>
+          ),
+        }}
       />
 
       <P>

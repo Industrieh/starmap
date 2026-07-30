@@ -1,11 +1,47 @@
+import { renderSystem, type ThemeInput } from '@industrieh/starmap-render'
 import type { JSX } from 'react'
 
 import { CodeBlock } from '@/components/code-block'
 import { Callout } from '@/components/docs/callout'
 import { PropsTable } from '@/components/docs/props-table'
 import { A, C, H2, H3, LI, Lead, P, Quote, UL } from '@/components/docs/prose'
+import { RenderCompare } from '@/components/docs/render-preview'
 import type { TocEntry } from '@/content/registry'
+import { SOL } from '@/content/starmap-render/fixture'
 import { routes } from '@/lib/routes'
+
+/** The light theme printed further down this page, and used to draw it. */
+const LIGHT: ThemeInput = {
+  background: '#f8fafc',
+  backdropStar: '#94a3b8',
+  label: '#0f172a',
+  orbit: '#cbd5e1',
+  gateOrbit: '#ddd6fe',
+  lane: '#94a3b8',
+  highlight: '#7c3aed',
+  habitable: '#059669',
+  gate: '#7c3aed',
+  gateUnstable: '#e11d48',
+  field: '#d6c9a0',
+  rock: '#a8a29e',
+  planets: { frozen: '#7dd3fc', terran: '#16a34a' },
+}
+
+const T = 4
+
+const DARK_SVG = renderSystem(SOL, { t: T, idPrefix: 'th-dark' })
+const LIGHT_SVG = renderSystem(SOL, { t: T, idPrefix: 'th-light', theme: LIGHT })
+const ONE_COLOUR = renderSystem(SOL, {
+  t: T,
+  idPrefix: 'th-one',
+  theme: { planets: { terran: '#f472b6' } },
+})
+const NO_BACKDROP_FIX = renderSystem(SOL, {
+  t: T,
+  idPrefix: 'th-trap',
+  // Deliberately wrong: a light background with the default pale-blue stars.
+  theme: { background: '#f8fafc', label: '#0f172a', orbit: '#cbd5e1' },
+})
 
 export const toc: readonly TocEntry[] = [
   { id: 'why', title: 'Why colour lives here', depth: 2 },
@@ -65,6 +101,19 @@ export default function Content(): JSX.Element {
 // planets.terran    → '#7ee787'   yours
 // planets.gas       → '#d8a06a'   still the default
 // planets.default   → '#8b8377'   still the default`}
+      />
+
+      <RenderCompare
+        left={{ svg: DARK_SVG, label: <>The default theme, untouched.</> }}
+        right={{
+          svg: ONE_COLOUR,
+          label: (
+            <>
+              One key changed — <C>{`{ planets: { terran: '#f472b6' } }`}</C>. Vesper is pink;
+              Aurelia, the star, the belt and the gate are all still the default.
+            </>
+          ),
+        }}
       />
 
       <Callout tone="warning" title="A RouteStyle is replaced whole">
@@ -281,11 +330,40 @@ export const LIGHT: ThemeInput = {
 renderSystem(system, { theme: LIGHT })`}
       />
 
+      <RenderCompare
+        left={{ svg: DARK_SVG, label: <>The default, dark.</> }}
+        right={{
+          svg: LIGHT_SVG,
+          label: <>The theme above. Same system, same t — thirteen values and one table.</>,
+        }}
+      />
+
       <Callout tone="warning" title="Check the backdrop when you go light">
         <C>backdropStar</C> is the one that catches people out. Left at its default it is a pale
-        blue, which disappears entirely on a pale background — and you get a drawing that looks
-        oddly empty for no obvious reason.
+        blue, which all but disappears on a pale background — and you get a drawing that looks oddly
+        empty for no obvious reason.
       </Callout>
+
+      <RenderCompare
+        left={{
+          svg: NO_BACKDROP_FIX,
+          label: (
+            <>
+              <strong>The trap.</strong> Background, label and orbit changed — <C>backdropStar</C>{' '}
+              forgotten. The star field is still there, and you can barely see it.
+            </>
+          ),
+        }}
+        right={{
+          svg: LIGHT_SVG,
+          label: (
+            <>
+              <strong>Fixed.</strong> One more line, <C>backdropStar: &apos;#94a3b8&apos;</C>, and
+              the sky comes back.
+            </>
+          ),
+        }}
+      />
 
       <H2 id="resolve">Resolving once</H2>
       <P>

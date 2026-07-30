@@ -118,6 +118,39 @@ library you are currently in.
   the same idea the model encodes, which is why the backdrop is the subject
   rather than a texture.
 
+## The drawings are real
+
+The pictures on the `starmap-render` pages are not screenshots. Each one is
+produced by calling the renderer while the page is being prerendered, from the
+fixture in
+[`src/content/starmap-render/fixture.ts`](src/content/starmap-render/fixture.ts):
+
+```tsx
+const FIRST = renderSystem(SOL, { t: 3, idPrefix: 'qs-first' })
+// …
+<RenderPreview svg={FIRST} caption="…" />
+```
+
+A drawing that stops matching the code cannot happen, because there is only one
+of them. `RenderPreview` and `RenderCompare` do nothing but frame the string —
+no client JavaScript is involved, and the renderer never reaches the browser.
+
+Two things to respect when adding one:
+
+- **Give every preview its own `idPrefix`.** A drawing declares gradients in
+  `<defs>`, and SVG ids are global to the page — two previews sharing a prefix
+  would both use the first one's star colour. It is the trap documented on the
+  Framing page, and it applies to the documentation itself.
+- **Show the fixture, not a retyped literal.** The Quickstart prints
+  `FIXTURE_SOURCE`, which is the source of the universe the drawings are made
+  from. A hand-written copy next to a real drawing is the drift this whole
+  arrangement exists to prevent.
+
+> **This app now depends on the two packages**, and imports resolve to their
+> `dist/`, not their sources. `bun run build` from the root orders it correctly —
+> the packages build first, the site last. `bun run docs` on a stale `dist/` will
+> happily draw yesterday's renderer.
+
 ## Code blocks
 
 [`CodeBlock`](src/components/code-block.tsx) is a Server Component around
