@@ -55,7 +55,7 @@ export const GITHUB_URL = 'https://github.com/Industrieh/starmap'
 export const LIBRARIES: readonly Library[] = [
   {
     slug: 'starmap',
-    packageName: '@cotontigeh/starmap',
+    packageName: '@industrieh/starmap',
     name: 'starmap',
     version: '0.1.0',
     tagline: 'Describe, validate and query a star universe.',
@@ -136,7 +136,7 @@ export const LIBRARIES: readonly Library[] = [
   },
   {
     slug: 'starmap-render',
-    packageName: '@cotontigeh/starmap-render',
+    packageName: '@industrieh/starmap-render',
     name: 'starmap-render',
     version: '0.1.0',
     tagline: 'Turn a universe into SVG. Strings, not components.',

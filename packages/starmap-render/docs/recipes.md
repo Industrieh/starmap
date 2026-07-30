@@ -20,7 +20,7 @@ Task by task. Every snippet assumes a `galaxy` built with `createGalaxy()`.
 ## Write a file
 
 ```ts
-import { renderSystem } from '@cotontigeh/starmap-render'
+import { renderSystem } from '@industrieh/starmap-render'
 
 await Bun.write('sol.svg', renderSystem(galaxy.systems[0], { t: 0 }))
 ```
@@ -103,8 +103,8 @@ for a real map. Draw the layers once, then move the objects — the `data-id`
 attributes are there for exactly this.
 
 ```ts
-import { systemPositions } from '@cotontigeh/starmap'
-import { renderSystemContent, systemViewBox, viewBoxAttr } from '@cotontigeh/starmap-render'
+import { systemPositions } from '@industrieh/starmap'
+import { renderSystemContent, systemViewBox, viewBoxAttr } from '@industrieh/starmap-render'
 
 svgElement.setAttribute('viewBox', viewBoxAttr(systemViewBox(system)))
 svgElement.innerHTML = renderSystemContent(system, { t: 0 })
@@ -133,7 +133,7 @@ planet's, and its transform is relative.
 Own the root element, and pan and zoom become one attribute:
 
 ```ts
-import { renderSystemContent, systemViewBox, viewBoxAttr } from '@cotontigeh/starmap-render'
+import { renderSystemContent, systemViewBox, viewBoxAttr } from '@industrieh/starmap-render'
 
 let view = systemViewBox(system)
 svgElement.innerHTML = renderSystemContent(system, { t })
@@ -156,7 +156,7 @@ Panning is the same idea: add your drag delta, in world units, to `view.x` and
 One listener on the container, because the markup can be replaced at any time:
 
 ```ts
-import { indexGalaxy } from '@cotontigeh/starmap'
+import { indexGalaxy } from '@industrieh/starmap'
 
 const index = indexGalaxy(galaxy)
 
@@ -186,7 +186,7 @@ import {
   renderSystemContent,
   svgDocument,
   systemViewBox,
-} from '@cotontigeh/starmap-render'
+} from '@industrieh/starmap-render'
 
 const ships = group(
   { 'data-layer': 'ships', fill: '#fff' },
@@ -204,7 +204,7 @@ Coordinates in an overlay are world units in the system's frame — the same one
 ## Show a route on the map
 
 ```ts
-import { findRoute } from '@cotontigeh/starmap'
+import { findRoute } from '@industrieh/starmap'
 
 const route = findRoute(galaxy, 'sol', 'kepler')
 const svg = renderGalaxy(galaxy, { highlight: route?.systemIds })

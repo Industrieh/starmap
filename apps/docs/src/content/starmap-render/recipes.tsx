@@ -34,8 +34,8 @@ export default function Content(): JSX.Element {
       <CodeBlock
         lang="ts"
         filename="export.ts"
-        code={`import { indexSystems } from '@cotontigeh/starmap'
-import { renderGalaxy, renderSystem } from '@cotontigeh/starmap-render'
+        code={`import { indexSystems } from '@industrieh/starmap'
+import { renderGalaxy, renderSystem } from '@industrieh/starmap-render'
 
 const systems = indexSystems(galaxy)
 
@@ -93,7 +93,7 @@ for (const system of galaxy.systems) {
       <CodeBlock
         lang="tsx"
         code={`import { useMemo } from 'react'
-import { renderSystem } from '@cotontigeh/starmap-render'
+import { renderSystem } from '@industrieh/starmap-render'
 
 // Interactive: the SVG becomes part of the DOM, so data-id is reachable.
 function SystemView({ system, t }: { system: StarSystem; t: number }) {
@@ -125,10 +125,10 @@ function SystemThumb({ system }: { system: StarSystem }) {
 
       <CodeBlock
         lang="ts"
-        code={`import { systemPositions } from '@cotontigeh/starmap'
+        code={`import { systemPositions } from '@industrieh/starmap'
 import {
   el, group, text, renderSystemContent, systemViewBox, viewBoxAttr,
-} from '@cotontigeh/starmap-render'
+} from '@industrieh/starmap-render'
 
 function draw(system: StarSystem, t: number, ships: Ship[]) {
   const at = systemPositions(system, t)
@@ -177,8 +177,8 @@ function draw(system: StarSystem, t: number, ships: Ship[]) {
 
       <CodeBlock
         lang="ts"
-        code={`import { findRoute } from '@cotontigeh/starmap'
-import { renderGalaxy } from '@cotontigeh/starmap-render'
+        code={`import { findRoute } from '@industrieh/starmap'
+import { renderGalaxy } from '@industrieh/starmap-render'
 
 const route = findRoute(galaxy, 'sol', 'vega')
 
@@ -255,7 +255,7 @@ expect(svg).toContain('<circle r="6" fill="#4fae6a" stroke-width="0.87"/>')`}
       <CodeBlock
         lang="bash"
         code={`bun -e '
-  import { renderSystem } from "@cotontigeh/starmap-render"
+  import { renderSystem } from "@industrieh/starmap-render"
   import { galaxy } from "./universe"
   await Bun.write("/tmp/sol.svg", renderSystem(galaxy.systems[0], { t: 3, width: 700, height: 700 }))
 ' && open /tmp/sol.svg`}

@@ -52,7 +52,7 @@ bun run check`}
 
       <Callout tone="tip" title="You never have to build the core first">
         This package depends on the core through <C>workspace:*</C>, and its tests alias{' '}
-        <C>@cotontigeh/starmap</C> to the core&apos;s <strong>sources</strong>. Change something in
+        <C>@industrieh/starmap</C> to the core&apos;s <strong>sources</strong>. Change something in
         the core and the renderer&apos;s tests see it immediately.
       </Callout>
 
@@ -85,7 +85,7 @@ bun run check`}
 
       <H2 id="house-rule">The house rule</H2>
       <Quote>
-        <C>src/</C> imports <C>@cotontigeh/starmap</C>, or something relative. Nothing else.
+        <C>src/</C> imports <C>@industrieh/starmap</C>, or something relative. Nothing else.
       </Quote>
 
       <P>

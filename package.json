@@ -1,5 +1,5 @@
 {
-  "name": "@cotontigeh/starmap-monorepo",
+  "name": "@industrieh/starmap-monorepo",
   "private": true,
   "workspaces": [
     "packages/*",
@@ -16,11 +16,11 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "check": "bun run fmt:check && bun run lint && bun run typecheck && bun run test",
-    "dev": "bun run --filter '@cotontigeh/example-playground' dev",
-    "docs": "bun run --filter '@cotontigeh/docs' dev",
-    "example": "bun run --filter '@cotontigeh/example-basic' start",
-    "example:svg": "bun run --filter '@cotontigeh/example-basic-svg-generation' start",
-    "example:react": "bun run --filter '@cotontigeh/example-interactive-react' start"
+    "dev": "bun run --filter '@industrieh/example-playground' dev",
+    "docs": "bun run --filter '@industrieh/docs' dev",
+    "example": "bun run --filter '@industrieh/example-basic' start",
+    "example:svg": "bun run --filter '@industrieh/example-basic-svg-generation' start",
+    "example:react": "bun run --filter '@industrieh/example-interactive-react' start"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

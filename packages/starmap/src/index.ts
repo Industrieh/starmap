@@ -1,5 +1,5 @@
 /**
- * `@cotontigeh/starmap` — a star-system model for JS/TS games.
+ * `@industrieh/starmap` — a star-system model for JS/TS games.
  *
  * The library is **pure logic**: no dependencies, no DOM, nothing about
  * rendering. The same code runs in a browser, in Node or Bun, in a worker, on a
@@ -13,7 +13,7 @@
  *
  * @example Describe, build, query
  * ```ts
- * import { createGalaxy, findRoute, indexGalaxy } from '@cotontigeh/starmap'
+ * import { createGalaxy, findRoute, indexGalaxy } from '@industrieh/starmap'
  *
  * const galaxy = createGalaxy({
  *   systems: [

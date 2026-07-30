@@ -44,8 +44,8 @@
     // errors. The paths are relative to this file, so to the repo root.
     // Remember to add an entry here for every new package.
     "paths": {
-      "@cotontigeh/starmap": ["./packages/starmap/src/index.ts"],
-      "@cotontigeh/starmap-render": ["./packages/starmap-render/src/index.ts"]
+      "@industrieh/starmap": ["./packages/starmap/src/index.ts"],
+      "@industrieh/starmap-render": ["./packages/starmap-render/src/index.ts"]
     }
   }
 }

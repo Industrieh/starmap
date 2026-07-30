@@ -45,7 +45,7 @@ packages/starmap-render/
 ```
 
 ```
-index.ts ──► system.ts ──┬──► root.ts ──► geometry.ts ──► @cotontigeh/starmap
+index.ts ──► system.ts ──┬──► root.ts ──► geometry.ts ──► @industrieh/starmap
          ──► galaxy.ts ──┤              └► svg.ts
                          ├──► theme.ts
                          ├──► geometry.ts

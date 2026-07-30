@@ -1,5 +1,5 @@
 /**
- * `@cotontigeh/starmap-render` — turn a `@cotontigeh/starmap` universe into SVG.
+ * `@industrieh/starmap-render` — turn a `@industrieh/starmap` universe into SVG.
  *
  * The package produces **strings**, not components. A component would pick a
  * framework for you; a string is consumed everywhere — written to a `.svg`
@@ -10,13 +10,13 @@
  * selection and the clock belong to the application. This package draws one
  * frame, for one moment.
  *
- * Its only dependency is `@cotontigeh/starmap`. No DOM, no framework, no
+ * Its only dependency is `@industrieh/starmap`. No DOM, no framework, no
  * stylesheet.
  *
  * @example Draw a system, and the galaxy it belongs to
  * ```ts
- * import { createGalaxy, findRoute } from '@cotontigeh/starmap'
- * import { renderGalaxy, renderSystem } from '@cotontigeh/starmap-render'
+ * import { createGalaxy, findRoute } from '@industrieh/starmap'
+ * import { renderGalaxy, renderSystem } from '@industrieh/starmap-render'
  *
  * const galaxy = createGalaxy({ systems: [...], lanes: [...] })
  *

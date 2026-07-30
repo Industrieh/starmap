@@ -73,7 +73,7 @@ export default function Content(): JSX.Element {
           <CodeBlock
             lang="ts"
             filename="universe.ts"
-            code={`import { createGalaxy, type GalaxyInput } from '@cotontigeh/starmap'
+            code={`import { createGalaxy, type GalaxyInput } from '@industrieh/starmap'
 
 const input: GalaxyInput = {
   seed: 'quickstart',
@@ -224,7 +224,7 @@ galaxy.systems[1].star.name          // 'Vega' — falls back to the system name
 
       <CodeBlock
         lang="ts"
-        code={`import { indexGalaxy, findRoute, systemOf, stationsOf } from '@cotontigeh/starmap'
+        code={`import { indexGalaxy, findRoute, systemOf, stationsOf } from '@industrieh/starmap'
 
 const index = indexGalaxy(galaxy)   // built once, kept around
 index.size                          // 8 — every object, all kinds mixed
@@ -261,7 +261,7 @@ stationsOf(galaxy.systems[0]).map((s) => s.name)   // ['High Anchorage']`}
 
       <CodeBlock
         lang="ts"
-        code={`import { systemPositions } from '@cotontigeh/starmap'
+        code={`import { systemPositions } from '@industrieh/starmap'
 
 const at = systemPositions(galaxy.systems[0], 6)   // t = 6 seconds
 at.get('sol-p0')        // { x: -90, y: 0 }  — Aurelia, half way round its 12s orbit
@@ -331,7 +331,7 @@ function frame(dt: number) {
 
       <CodeBlock
         lang="ts"
-        code={`import { validateGalaxy, type Galaxy } from '@cotontigeh/starmap'
+        code={`import { validateGalaxy, type Galaxy } from '@industrieh/starmap'
 
 const galaxy = JSON.parse(saveFile) as Galaxy
 const issues = validateGalaxy(galaxy)      // never throws, whatever you pass it
@@ -349,7 +349,7 @@ if (issues.length) {
 
       <CodeBlock
         lang="ts"
-        code={`import { connectedComponents } from '@cotontigeh/starmap'
+        code={`import { connectedComponents } from '@industrieh/starmap'
 
 const parts = connectedComponents(galaxy)  // [['sol', 'vega']] — one group, healthy
 

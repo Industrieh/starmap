@@ -10,7 +10,7 @@
  * tag itself.
  */
 
-import { round } from '@cotontigeh/starmap'
+import { round } from '@industrieh/starmap'
 
 import type { ViewBox } from './geometry'
 

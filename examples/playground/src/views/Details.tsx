@@ -9,7 +9,7 @@
  * Build that index **once** per galaxy: it walks the whole universe.
  */
 
-import type { GalaxyIndex, IndexEntry } from '@cotontigeh/starmap'
+import type { GalaxyIndex, IndexEntry } from '@industrieh/starmap'
 import type { JSX } from 'react'
 
 /** The way there, already resolved to names — see `findRoute()`. */

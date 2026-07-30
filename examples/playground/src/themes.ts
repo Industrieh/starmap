@@ -17,7 +17,7 @@
  * table by table — so `light` below only lists what it actually changes.
  */
 
-import type { ThemeInput } from '@cotontigeh/starmap-render'
+import type { ThemeInput } from '@industrieh/starmap-render'
 
 export type ThemeName = 'dark' | 'light'
 

@@ -39,7 +39,7 @@ export default function Content(): JSX.Element {
   return (
     <>
       <Lead>
-        Every export of <C>@cotontigeh/starmap</C>, with its signature. Everything comes from the
+        Every export of <C>@industrieh/starmap</C>, with its signature. Everything comes from the
         package root — there are no sub-paths.
       </Lead>
 

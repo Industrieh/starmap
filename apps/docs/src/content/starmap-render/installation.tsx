@@ -24,18 +24,18 @@ export default function Content(): JSX.Element {
       </Lead>
 
       <H2 id="install">Install it</H2>
-      <PackageManagerTabs packageName="@cotontigeh/starmap-render" />
+      <PackageManagerTabs packageName="@industrieh/starmap-render" />
 
       <H2 id="core">It needs the core</H2>
       <P>
         The renderer draws a <C>Galaxy</C>, and only{' '}
         <A href={routes.library('starmap')}>
-          <C>@cotontigeh/starmap</C>
+          <C>@industrieh/starmap</C>
         </A>{' '}
         produces one. So the two are installed together:
       </P>
 
-      <PackageManagerTabs packageName="@cotontigeh/starmap @cotontigeh/starmap-render" />
+      <PackageManagerTabs packageName="@industrieh/starmap @industrieh/starmap-render" />
 
       <P>
         That is the whole dependency tree — the core has none of its own. Two packages in your
@@ -98,7 +98,7 @@ export default function Content(): JSX.Element {
   el, group, text,       // the string primitives, for your own overlays
   type Theme,
   type RenderSystemOptions,
-} from '@cotontigeh/starmap-render'`}
+} from '@industrieh/starmap-render'`}
       />
 
       <H2 id="next">Next step</H2>

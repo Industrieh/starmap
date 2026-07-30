@@ -106,8 +106,8 @@ export default function Content(): JSX.Element {
       <CodeBlock
         lang="ts"
         filename="interaction.ts"
-        code={`import { indexGalaxy } from '@cotontigeh/starmap'
-import { renderSystem } from '@cotontigeh/starmap-render'
+        code={`import { indexGalaxy } from '@industrieh/starmap'
+import { renderSystem } from '@industrieh/starmap-render'
 
 const index = indexGalaxy(galaxy)          // built once
 container.innerHTML = renderSystem(system, { t: 0 })
@@ -173,8 +173,8 @@ function select(id: string) {
 
       <CodeBlock
         lang="ts"
-        code={`import { systemPositions } from '@cotontigeh/starmap'
-import { el, renderSystemContent, systemViewBox, viewBoxAttr } from '@cotontigeh/starmap-render'
+        code={`import { systemPositions } from '@industrieh/starmap'
+import { el, renderSystemContent, systemViewBox, viewBoxAttr } from '@industrieh/starmap-render'
 
 const at = systemPositions(system, t)
 const p = at.get(selectedId)
@@ -206,7 +206,7 @@ container.innerHTML =
       <CodeBlock
         lang="ts"
         filename="camera.ts"
-        code={`import { galaxyViewBox, renderGalaxyContent, viewBoxAttr } from '@cotontigeh/starmap-render'
+        code={`import { galaxyViewBox, renderGalaxyContent, viewBoxAttr } from '@industrieh/starmap-render'
 
 const base = galaxyViewBox(galaxy)
 const svg = document.querySelector('svg')!

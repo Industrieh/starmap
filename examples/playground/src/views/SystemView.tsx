@@ -11,8 +11,8 @@
  * `systemPositions()`; the recipe is in the renderer's `docs/recipes.md`.
  */
 
-import type { StarSystem, SystemsById } from '@cotontigeh/starmap'
-import { renderSystem, type ThemeInput } from '@cotontigeh/starmap-render'
+import type { StarSystem, SystemsById } from '@industrieh/starmap'
+import { renderSystem, type ThemeInput } from '@industrieh/starmap-render'
 import type { JSX } from 'react'
 
 import { SvgStage, type Hit } from './SvgStage'

@@ -6,7 +6,7 @@
  * turn every visual improvement into a failing test.
  */
 
-import { createGalaxy, indexSystems, systemPositions } from '@cotontigeh/starmap'
+import { createGalaxy, indexSystems, systemPositions } from '@industrieh/starmap'
 import { describe, expect, test } from 'vitest'
 
 import { DEFAULT_THEME, num, renderSystem, renderSystemContent } from '../src/index'

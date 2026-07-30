@@ -88,7 +88,7 @@ if (here?.kind === 'system') {
 
       <CodeBlock
         lang="ts"
-        code={`import { validateGalaxy, FORMAT_VERSION, type Galaxy } from '@cotontigeh/starmap'
+        code={`import { validateGalaxy, FORMAT_VERSION, type Galaxy } from '@industrieh/starmap'
 
 function loadGalaxy(json: string): Galaxy {
   const galaxy = JSON.parse(json) as Galaxy
@@ -163,7 +163,7 @@ function reconcile(state: GameState, index: GalaxyIndex): GameState {
       <CodeBlock
         lang="ts"
         filename="appearance.ts"
-        code={`import type { PlanetType } from '@cotontigeh/starmap'
+        code={`import type { PlanetType } from '@industrieh/starmap'
 
 const PLANET_STYLE: Record<string, { fill: string; label: string }> = {
   terran:      { fill: '#4ade80', label: 'Terran' },
@@ -197,7 +197,7 @@ export function styleOf(type: PlanetType | undefined) {
 
       <CodeBlock
         lang="ts"
-        code={`import { createGalaxy, type GalaxyInput } from '@cotontigeh/starmap'
+        code={`import { createGalaxy, type GalaxyInput } from '@industrieh/starmap'
 
 // The JSON is *input*, not a finished galaxy — so it can stay terse, and
 // createGalaxy fills in the ids, the counts and the lane lengths.

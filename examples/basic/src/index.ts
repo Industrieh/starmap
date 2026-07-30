@@ -15,7 +15,7 @@ import {
   stationsOf,
   systemPositions,
   type GalaxyInput,
-} from '@cotontigeh/starmap'
+} from '@industrieh/starmap'
 
 // --- 1. Describe ------------------------------------------------------------
 // Everything derivable is left out: planet ids, hyperlane lengths, system edges

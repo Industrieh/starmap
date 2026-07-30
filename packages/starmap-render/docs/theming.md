@@ -23,7 +23,7 @@ For the shapes those colours are applied to, see [drawing.md](drawing.md).
 between `GalaxyInput` and `Galaxy`.
 
 ```ts
-import { renderSystem, resolveTheme } from '@cotontigeh/starmap-render'
+import { renderSystem, resolveTheme } from '@industrieh/starmap-render'
 
 // Inline: resolved on every call.
 renderSystem(system, { theme: { background: '#000' } })
@@ -208,7 +208,7 @@ Turning the backdrop off (`backdrop: 0`) usually reads better in light mode.
 picks its colours the same way the package does:
 
 ```ts
-import { DEFAULT_THEME, el, pickColor } from '@cotontigeh/starmap-render'
+import { DEFAULT_THEME, el, pickColor } from '@industrieh/starmap-render'
 
 const marker = (planet: Planet) =>
   el('circle', {

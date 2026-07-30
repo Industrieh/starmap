@@ -24,7 +24,7 @@ export default function Content(): JSX.Element {
       </Lead>
 
       <H2 id="install">Install it</H2>
-      <PackageManagerTabs packageName="@cotontigeh/starmap" />
+      <PackageManagerTabs packageName="@industrieh/starmap" />
 
       <P>
         That is the whole installation. The package pulls nothing else in — you can check the
@@ -75,7 +75,7 @@ export default function Content(): JSX.Element {
   createRng,             // deterministic randomness
   type Galaxy,           // the data contract
   type GalaxyInput,      // what you pass in
-} from '@cotontigeh/starmap'`}
+} from '@industrieh/starmap'`}
       />
 
       <P>
@@ -94,7 +94,7 @@ export default function Content(): JSX.Element {
         lang="ts"
         filename="index.html"
         code={`<script type="module">
-  import { createGalaxy } from 'https://esm.sh/@cotontigeh/starmap'
+  import { createGalaxy } from 'https://esm.sh/@industrieh/starmap'
 
   const galaxy = createGalaxy({
     systems: [{ id: 'sol', name: 'Sol', x: 0, y: 0, star: { radius: 18 } }],
@@ -106,7 +106,7 @@ export default function Content(): JSX.Element {
 
       <Callout tone="tip" title="Pin the version in production">
         A bare CDN URL follows the latest release, which is exactly what you do not want in
-        something you ship. Add the version — <C>@cotontigeh/starmap@0.1.0</C> — once the sketch
+        something you ship. Add the version — <C>@industrieh/starmap@0.1.0</C> — once the sketch
         becomes real.
       </Callout>
 

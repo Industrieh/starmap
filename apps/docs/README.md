@@ -5,7 +5,7 @@ of _every_ package.
 
 ```bash
 bun run docs          # from the root — dev server on http://localhost:3000
-bun run --filter '@cotontigeh/docs' build
+bun run --filter '@industrieh/docs' build
 ```
 
 ## What is here
@@ -183,7 +183,7 @@ rather than like a fresh scaffold.
   repo resolved to their sources. `isolatedDeclarations` is switched off — it
   exists so that the libraries can emit their `.d.ts` file by file, and a site
   emits nothing.
-- **Named `@cotontigeh/docs`**, `private`, `version 0.0.0` — an app is deployed,
+- **Named `@industrieh/docs`**, `private`, `version 0.0.0` — an app is deployed,
   never installed, so its version number carries no information.
 - **No `typescript` of its own.** It uses the root's, like every other package,
   which takes one flag in [`next.config.ts`](next.config.ts) — the comment there
@@ -217,8 +217,8 @@ has.
 
 | package                                                       | documentation                              |
 | ------------------------------------------------------------- | ------------------------------------------ |
-| [`@cotontigeh/starmap`](../../packages/starmap)               | `README.md`, `CONTRIBUTING.md` and `docs/` |
-| [`@cotontigeh/starmap-render`](../../packages/starmap-render) | `README.md`, `CONTRIBUTING.md` and `docs/` |
+| [`@industrieh/starmap`](../../packages/starmap)               | `README.md`, `CONTRIBUTING.md` and `docs/` |
+| [`@industrieh/starmap-render`](../../packages/starmap-render) | `README.md`, `CONTRIBUTING.md` and `docs/` |
 
 Neither package is a dependency of this app yet. Add them when the site starts
 showing live examples — they will need `transpilePackages` in `next.config.ts`,

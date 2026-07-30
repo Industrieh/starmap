@@ -21,8 +21,8 @@ import {
   indexSystems,
   type Galaxy,
   type StarSystem,
-} from '@cotontigeh/starmap'
-import type { ThemeInput } from '@cotontigeh/starmap-render'
+} from '@industrieh/starmap'
+import type { ThemeInput } from '@industrieh/starmap-render'
 import { useEffect, useMemo, useState, type JSX } from 'react'
 
 import { useAnimationTime } from './hooks/useAnimationTime'

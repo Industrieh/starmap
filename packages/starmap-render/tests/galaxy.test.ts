@@ -6,7 +6,7 @@
  * and nothing more.
  */
 
-import { createGalaxy, findRoute } from '@cotontigeh/starmap'
+import { createGalaxy, findRoute } from '@industrieh/starmap'
 import { describe, expect, test } from 'vitest'
 
 import { DEFAULT_THEME, renderGalaxy, renderGalaxyContent } from '../src/index'

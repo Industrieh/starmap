@@ -53,7 +53,7 @@ export default function Content(): JSX.Element {
 
       <CodeBlock
         lang="ts"
-        code={`import type { PlanetInput, Planet } from '@cotontigeh/starmap'
+        code={`import type { PlanetInput, Planet } from '@industrieh/starmap'
 
 // What you write — no id, no index, no stations array.
 const input: PlanetInput = { name: 'Vesper', orbit: 150, radius: 6 }

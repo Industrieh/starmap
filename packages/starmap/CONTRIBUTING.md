@@ -1,4 +1,4 @@
-# Contributing to `@cotontigeh/starmap`
+# Contributing to `@industrieh/starmap`
 
 Thanks for taking the time. This file covers the package in
 `packages/starmap/`. The repo-wide setup is in the [root
@@ -72,7 +72,7 @@ This is what lets the same code run in a browser, in Node or Bun, in a worker,
 on a server, under React Native, or inside a game engine.
 
 If a change needs something from that list, it does not belong in this package.
-`@cotontigeh/starmap-render` is where rendering goes.
+`@industrieh/starmap-render` is where rendering goes.
 
 ## What belongs here, and what does not
 

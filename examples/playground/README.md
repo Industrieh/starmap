@@ -1,4 +1,4 @@
-# @cotontigeh/example-playground
+# @industrieh/example-playground
 
 The full app. Generate a galaxy from a seed, fly through it, look inside the
 systems. It is also the place to hack on the libraries: `bun run dev` and the
@@ -29,7 +29,7 @@ that matters when [Claude drives Chrome](../interactive-react/README.md#look-at-
 | **✦ stars**                     | the decorative backdrop, off for a cleaner look            |
 
 The white ring on the map is your ship. Everything else — the dots, the lanes,
-the names, the colours — is drawn by `@cotontigeh/starmap-render`.
+the names, the colours — is drawn by `@industrieh/starmap-render`.
 
 ## Read it as a tutorial
 
@@ -52,7 +52,7 @@ you will have seen the whole loop, from a seed to a clickable map.
 ## The three pieces, and who does what
 
 ```
-      you                          @cotontigeh/starmap        @cotontigeh/starmap-render
+      you                          @industrieh/starmap        @industrieh/starmap-render
  ─────────────────            ──────────────────────────    ──────────────────────────────
  seed, tables, rules   ──►    createGalaxy()  validates
  how many planets             indexGalaxy()   looks up

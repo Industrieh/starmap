@@ -10,8 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LIBRARIES, routes } from '@/lib/routes'
 
 /** A real call against the real API — nothing on this page is mocked up. */
-const SAMPLE = `import { createGalaxy, findRoute } from '@cotontigeh/starmap'
-import { renderGalaxy } from '@cotontigeh/starmap-render'
+const SAMPLE = `import { createGalaxy, findRoute } from '@industrieh/starmap'
+import { renderGalaxy } from '@industrieh/starmap-render'
 
 const galaxy = createGalaxy({
   systems: [

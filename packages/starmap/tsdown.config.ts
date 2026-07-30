@@ -1,7 +1,7 @@
 import { defineConfig, type UserConfig } from 'tsdown'
 
 /**
- * Build setup for `@cotontigeh/starmap`.
+ * Build setup for `@industrieh/starmap`.
  *
  * One entry, no external dependencies, no assets: the published package is an
  * ESM module plus its type declarations. Nothing to mark as external, because

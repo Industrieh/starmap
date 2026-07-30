@@ -5,7 +5,7 @@
  * galaxy breaks first — one system, no systems, a system with nothing in it.
  */
 
-import { createGalaxy } from '@cotontigeh/starmap'
+import { createGalaxy } from '@industrieh/starmap'
 import { describe, expect, test } from 'vitest'
 
 import { arcPath, backdropStars, galaxyViewBox, systemViewBox, viewBoxAttr } from '../src/index'

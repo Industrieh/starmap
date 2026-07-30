@@ -17,7 +17,7 @@ import {
   toRad,
   type Galaxy,
   type StarSystem,
-} from '@cotontigeh/starmap'
+} from '@industrieh/starmap'
 
 /** A rectangle of world units, in SVG `viewBox` order. */
 export interface ViewBox {

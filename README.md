@@ -23,13 +23,13 @@ examples/     what never leaves the repo
 
 | folder                                                           | package                                    | what it is                                             |
 | ---------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------ |
-| [`packages/starmap`](packages/starmap)                           | `@cotontigeh/starmap`                      | **the core** — describe, validate and query a universe |
-| [`packages/starmap-render`](packages/starmap-render)             | `@cotontigeh/starmap-render`               | **the renderer** — a `Galaxy` or a system, as SVG      |
-| [`apps/docs`](apps/docs)                                         | `@cotontigeh/docs`                         | the documentation site, on Next.js — `private`         |
-| [`examples/basic`](examples/basic)                               | `@cotontigeh/example-basic`                | runnable example, `private`                            |
-| [`examples/basic-svg-generation`](examples/basic-svg-generation) | `@cotontigeh/example-basic-svg-generation` | runnable example, `private`                            |
-| [`examples/interactive-react`](examples/interactive-react)       | `@cotontigeh/example-interactive-react`    | runnable example, `private`                            |
-| [`examples/playground`](examples/playground)                     | `@cotontigeh/example-playground`           | the full app, `private`                                |
+| [`packages/starmap`](packages/starmap)                           | `@industrieh/starmap`                      | **the core** — describe, validate and query a universe |
+| [`packages/starmap-render`](packages/starmap-render)             | `@industrieh/starmap-render`               | **the renderer** — a `Galaxy` or a system, as SVG      |
+| [`apps/docs`](apps/docs)                                         | `@industrieh/docs`                         | the documentation site, on Next.js — `private`         |
+| [`examples/basic`](examples/basic)                               | `@industrieh/example-basic`                | runnable example, `private`                            |
+| [`examples/basic-svg-generation`](examples/basic-svg-generation) | `@industrieh/example-basic-svg-generation` | runnable example, `private`                            |
+| [`examples/interactive-react`](examples/interactive-react)       | `@industrieh/example-interactive-react`    | runnable example, `private`                            |
+| [`examples/playground`](examples/playground)                     | `@industrieh/example-playground`           | the full app, `private`                                |
 
 This three-way split is the common convention, and it carries useful
 information: a package's folder says **what happens to it**. A package in
@@ -39,14 +39,14 @@ can break without consequence. `apps/` gets deployed and never installed.
 
 ## The packages
 
-**`@cotontigeh/starmap`** — the core. You describe your universe with a typed
+**`@industrieh/starmap`** — the core. You describe your universe with a typed
 object, `createGalaxy()` checks and completes it, and you get back what you need
 to query it (indexes, routes, orbital positions over time). No dependencies, no
 DOM access, no notion of rendering. Its full documentation is in
 [its README](packages/starmap/README.md) and
 [`packages/starmap/docs/`](packages/starmap/docs/).
 
-**`@cotontigeh/starmap-render`** — the renderer. `renderSystem()` and
+**`@industrieh/starmap-render`** — the renderer. `renderSystem()` and
 `renderGalaxy()` turn a universe into an **SVG string**: no DOM, no framework,
 no stylesheet. Colours come in through a theme, interaction stays with the
 application. Its full documentation is in
@@ -76,7 +76,7 @@ Bun honours dependency order, so `starmap` is built before `starmap-render`. To
 target a single package:
 
 ```bash
-bun run --filter '@cotontigeh/starmap' test
+bun run --filter '@industrieh/starmap' test
 bun run --filter './packages/*' build
 ```
 
@@ -176,7 +176,7 @@ Production dependencies too, obviously.
 Packages reference each other with the `workspace:*` protocol:
 
 ```json
-{ "dependencies": { "@cotontigeh/starmap": "workspace:*" } }
+{ "dependencies": { "@industrieh/starmap": "workspace:*" } }
 ```
 
 ### Every package stands alone

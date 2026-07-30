@@ -10,8 +10,8 @@
 
 import { mkdir, writeFile } from 'node:fs/promises'
 
-import { createGalaxy, findRoute, indexSystems, type GalaxyInput } from '@cotontigeh/starmap'
-import { renderGalaxy, renderSystem } from '@cotontigeh/starmap-render'
+import { createGalaxy, findRoute, indexSystems, type GalaxyInput } from '@industrieh/starmap'
+import { renderGalaxy, renderSystem } from '@industrieh/starmap-render'
 
 // --- 1. Describe -----------------------------------------------------------
 // Three systems, small enough to read at a glance. Anything derivable is left

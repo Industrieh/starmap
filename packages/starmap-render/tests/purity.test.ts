@@ -1,7 +1,7 @@
 /**
  * The package stays a string generator.
  *
- * This is **the** rule here: `src/` knows about `@cotontigeh/starmap` and about
+ * This is **the** rule here: `src/` knows about `@industrieh/starmap` and about
  * nothing else. No DOM, no framework, no stylesheet, no clock, no randomness
  * that is not seeded. That is what lets the same call render a thumbnail on a
  * server, a frame in a worker, and a live map in a browser.
@@ -39,7 +39,7 @@ describe('one dependency', () => {
   test.each(cases)('%s imports the core, or something local', (_name, file) => {
     const code = stripComments(readFileSync(file, 'utf8'))
     for (const [, specifier] of code.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
-      expect(specifier, `${_name} imports ${specifier}`).toMatch(/^(\.\.?\/|@cotontigeh\/starmap$)/)
+      expect(specifier, `${_name} imports ${specifier}`).toMatch(/^(\.\.?\/|@industrieh\/starmap$)/)
     }
   })
 

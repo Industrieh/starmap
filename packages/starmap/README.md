@@ -1,9 +1,9 @@
-# @cotontigeh/starmap
+# @industrieh/starmap
 
 Describe a star system in a plain object. Get back a checked, queryable universe.
 
 ```ts
-import { createGalaxy } from '@cotontigeh/starmap'
+import { createGalaxy } from '@industrieh/starmap'
 
 const galaxy = createGalaxy({
   systems: [
@@ -44,13 +44,13 @@ a game engine.
 ## Install
 
 ```bash
-bun add @cotontigeh/starmap
+bun add @industrieh/starmap
 ```
 
 Not on npm yet. Until then, install it from a path or from git:
 
 ```bash
-bun add @cotontigeh/starmap@file:../starmap/packages/starmap
+bun add @industrieh/starmap@file:../starmap/packages/starmap
 bun add github:cotontigeh/starmap
 ```
 
@@ -82,7 +82,7 @@ What the two have in common is the data model. That is what this package is.
 checks the result, and hands back a `Galaxy`.
 
 ```ts
-import { createGalaxy, type GalaxyInput } from '@cotontigeh/starmap'
+import { createGalaxy, type GalaxyInput } from '@industrieh/starmap'
 
 const input: GalaxyInput = {
   systems: [
@@ -202,7 +202,7 @@ import {
   indexGalaxy,
   stationsOf,
   systemOf,
-} from '@cotontigeh/starmap'
+} from '@industrieh/starmap'
 
 // Is every system reachable? The library does not check this for you.
 const parts = connectedComponents(galaxy)
@@ -236,7 +236,7 @@ systemOf(index, 'earth')?.gates // same, reusing the index above
 id.
 
 ```ts
-import { systemPositions } from '@cotontigeh/starmap'
+import { systemPositions } from '@industrieh/starmap'
 
 const pos = systemPositions(galaxy.systems[0], 12.5)
 pos.get('earth') // { x: -75, y: 130 }
@@ -279,7 +279,7 @@ is useless the moment a project has a dark theme or a fixed palette. Mapping
 write it.
 
 If you want a picture rather than a drawing loop,
-[`@cotontigeh/starmap-render`](../starmap-render) turns a system or a galaxy into
+[`@industrieh/starmap-render`](../starmap-render) turns a system or a galaxy into
 an SVG string, with the colors passed in as a theme.
 
 ## Generate it with a script
@@ -288,7 +288,7 @@ The library does not generate universes, but it ships the tool that makes your
 generator deterministic.
 
 ```ts
-import { createGalaxy, createRng, type SystemInput } from '@cotontigeh/starmap'
+import { createGalaxy, createRng, type SystemInput } from '@industrieh/starmap'
 
 function generate(seed: string, count = 24) {
   const rng = createRng(seed)

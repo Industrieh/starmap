@@ -20,7 +20,7 @@ The simplest case: a universe in a TypeScript file. Leave out anything
 derivable.
 
 ```ts
-import { createGalaxy, type GalaxyInput } from '@cotontigeh/starmap'
+import { createGalaxy, type GalaxyInput } from '@industrieh/starmap'
 
 const input: GalaxyInput = {
   systems: [
@@ -65,7 +65,7 @@ Your script builds the object; `createGalaxy()` turns it into checked terrain.
 `createRng()` gives you determinism.
 
 ```ts
-import { createGalaxy, createRng, type SystemInput } from '@cotontigeh/starmap'
+import { createGalaxy, createRng, type SystemInput } from '@industrieh/starmap'
 
 export function generate(seed: string, count = 24) {
   const rng = createRng(seed)
@@ -115,7 +115,7 @@ TypeScript's guarantees do not survive `JSON.parse`. `validateGalaxy()` picks up
 where the types stop.
 
 ```ts
-import { validateGalaxy, type Galaxy } from '@cotontigeh/starmap'
+import { validateGalaxy, type Galaxy } from '@industrieh/starmap'
 
 export function load(json: string): Galaxy {
   const galaxy = JSON.parse(json) as Galaxy
@@ -140,7 +140,7 @@ Validation guarantees structural integrity, not that your world makes sense.
 Game rules are yours. The one that bites most often:
 
 ```ts
-import { connectedComponents } from '@cotontigeh/starmap'
+import { connectedComponents } from '@industrieh/starmap'
 
 const parts = connectedComponents(galaxy)
 if (parts.length > 1) {
@@ -177,7 +177,7 @@ for (const s of galaxy.systems) {
 Never mutate the `Galaxy`. Keep a separate layer, keyed by the same ids.
 
 ```ts
-import { FORMAT_VERSION, type Galaxy } from '@cotontigeh/starmap'
+import { FORMAT_VERSION, type Galaxy } from '@industrieh/starmap'
 import { generate } from './generator'
 
 interface Save {
@@ -248,7 +248,7 @@ so a `switch` over them is never exhaustive as far as TypeScript is concerned.
 Reuse `createRng` so your content is reproducible too.
 
 ```ts
-import { createRng } from '@cotontigeh/starmap'
+import { createRng } from '@industrieh/starmap'
 
 /** A station's stock, stable for a given save and station. */
 function stock(seed: string, stationId: string) {
@@ -295,7 +295,7 @@ graph yourself.
 
 ```ts
 // worker.ts
-import { createGalaxy } from '@cotontigeh/starmap'
+import { createGalaxy } from '@industrieh/starmap'
 self.onmessage = (e) => self.postMessage(createGalaxy(e.data))
 ```
 

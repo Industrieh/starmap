@@ -15,7 +15,7 @@
  * ```
  */
 
-import type { Galaxy, StarSystem } from '@cotontigeh/starmap'
+import type { Galaxy, StarSystem } from '@industrieh/starmap'
 
 import { backdropStars, GALAXY_MARGIN, galaxyViewBox, type ViewBox } from './geometry'
 import { svgDocument, type DocumentOptions } from './root'

@@ -1,10 +1,10 @@
-# @cotontigeh/starmap-render
+# @industrieh/starmap-render
 
-Turn a [`@cotontigeh/starmap`](../starmap) universe into SVG.
+Turn a [`@industrieh/starmap`](../starmap) universe into SVG.
 
 ```ts
-import { createGalaxy } from '@cotontigeh/starmap'
-import { renderSystem } from '@cotontigeh/starmap-render'
+import { createGalaxy } from '@industrieh/starmap'
+import { renderSystem } from '@industrieh/starmap-render'
 
 const galaxy = createGalaxy({
   systems: [
@@ -44,13 +44,13 @@ the core.
 ## Install
 
 ```bash
-bun add @cotontigeh/starmap @cotontigeh/starmap-render
+bun add @industrieh/starmap @industrieh/starmap-render
 ```
 
 Not on npm yet. Until then, install it from a path or from git:
 
 ```bash
-bun add @cotontigeh/starmap-render@file:../starmap/packages/starmap-render
+bun add @industrieh/starmap-render@file:../starmap/packages/starmap-render
 ```
 
 The core is a real dependency, not a peer one, and it is never bundled in — your
@@ -79,8 +79,8 @@ draws one frame.
 `renderSystem(system, options)` returns a complete document.
 
 ```ts
-import { indexSystems } from '@cotontigeh/starmap'
-import { renderSystem } from '@cotontigeh/starmap-render'
+import { indexSystems } from '@industrieh/starmap'
+import { renderSystem } from '@industrieh/starmap-render'
 
 const svg = renderSystem(galaxy.systems[0], {
   t: 12.5, // simulation seconds — where the planets are
@@ -117,8 +117,8 @@ one's star colour. The system's own id makes a good prefix.
 as the lines between them.
 
 ```ts
-import { findRoute } from '@cotontigeh/starmap'
-import { renderGalaxy } from '@cotontigeh/starmap-render'
+import { findRoute } from '@industrieh/starmap'
+import { renderGalaxy } from '@industrieh/starmap-render'
 
 const route = findRoute(galaxy, 'sol', 'kepler')
 const svg = renderGalaxy(galaxy, { highlight: route?.systemIds })
@@ -225,7 +225,7 @@ For pan and zoom, take the layers without the document around them and own the
 `viewBox` yourself:
 
 ```ts
-import { renderSystemContent, systemViewBox, viewBoxAttr } from '@cotontigeh/starmap-render'
+import { renderSystemContent, systemViewBox, viewBoxAttr } from '@industrieh/starmap-render'
 
 const box = systemViewBox(system)
 svgElement.setAttribute('viewBox', viewBoxAttr(box)) // then change it as you zoom
@@ -270,7 +270,7 @@ this package builds every tag with. Use them to draw your own overlays in the
 same document.
 
 ```ts
-import { el, group } from '@cotontigeh/starmap-render'
+import { el, group } from '@industrieh/starmap-render'
 
 const ships = group(
   { 'data-layer': 'ships' },

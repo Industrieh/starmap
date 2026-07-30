@@ -34,7 +34,7 @@ import {
   type Rng,
   type StationInput,
   type SystemInput,
-} from '@cotontigeh/starmap'
+} from '@industrieh/starmap'
 
 /** How far apart two systems must be. Raise it for a sparser galaxy. */
 const MIN_DISTANCE = 260

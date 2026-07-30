@@ -35,10 +35,10 @@ const config: UserConfig = defineConfig({
   },
   resolve: {
     alias: {
-      '@cotontigeh/starmap': fileURLToPath(
+      '@industrieh/starmap': fileURLToPath(
         new URL('../../packages/starmap/src/index.ts', import.meta.url),
       ),
-      '@cotontigeh/starmap-render': fileURLToPath(
+      '@industrieh/starmap-render': fileURLToPath(
         new URL('../../packages/starmap-render/src/index.ts', import.meta.url),
       ),
     },

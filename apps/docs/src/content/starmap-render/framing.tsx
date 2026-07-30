@@ -76,7 +76,7 @@ export default function Content(): JSX.Element {
 
       <CodeBlock
         lang="ts"
-        code={`import { systemViewBox, galaxyViewBox, viewBoxAttr } from '@cotontigeh/starmap-render'
+        code={`import { systemViewBox, galaxyViewBox, viewBoxAttr } from '@industrieh/starmap-render'
 
 // Sol's outerLimit is 300, and the default margin adds 45%.
 systemViewBox(system)

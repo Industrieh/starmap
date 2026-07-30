@@ -1,5 +1,5 @@
 {
-  "name": "@cotontigeh/example-basic",
+  "name": "@industrieh/example-basic",
   "version": "0.0.0",
   "private": true,
   "description": "Runnable example: describe a universe by hand, build it, query it.",
@@ -9,6 +9,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cotontigeh/starmap": "workspace:*"
+    "@industrieh/starmap": "workspace:*"
   }
 }

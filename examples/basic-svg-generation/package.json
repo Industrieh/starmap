@@ -1,5 +1,5 @@
 {
-  "name": "@cotontigeh/example-basic-svg-generation",
+  "name": "@industrieh/example-basic-svg-generation",
   "version": "0.0.0",
   "private": true,
   "description": "Runnable example: describe a universe, draw it as SVG files.",
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cotontigeh/starmap": "workspace:*",
-    "@cotontigeh/starmap-render": "workspace:*"
+    "@industrieh/starmap": "workspace:*",
+    "@industrieh/starmap-render": "workspace:*"
   }
 }

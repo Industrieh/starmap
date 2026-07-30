@@ -1,4 +1,4 @@
-# @cotontigeh/example-basic-svg-generation
+# @industrieh/example-basic-svg-generation
 
 Runnable example: describe a universe, draw it as SVG files.
 

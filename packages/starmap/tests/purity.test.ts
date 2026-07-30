@@ -12,7 +12,7 @@
  * build first.
  *
  * What a renderer needs on top of this model lives in
- * `@cotontigeh/starmap-render`, which is where the drawing went.
+ * `@industrieh/starmap-render`, which is where the drawing went.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -43,7 +43,7 @@ describe('no dependencies', () => {
 
   test.each(cases)('%s only imports local modules', (_name, file) => {
     // Comments are stripped first: JSDoc examples legitimately import
-    // `@cotontigeh/starmap`, from the reader's point of view.
+    // `@industrieh/starmap`, from the reader's point of view.
     const code = stripComments(readFileSync(file, 'utf8'))
     const imports = [...code.matchAll(/from\s+['"]([^'"]+)['"]/g)]
     for (const [, specifier] of imports) {

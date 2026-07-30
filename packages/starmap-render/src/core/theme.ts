@@ -1,7 +1,7 @@
 /**
  * The look of a drawing, passed in as a parameter.
  *
- * `@cotontigeh/starmap` carries no `color` and no display label: mapping
+ * `@industrieh/starmap` carries no `color` and no display label: mapping
  * `planet.type` to an appearance is a decision of the project that displays it.
  * This is where that decision enters.
  *

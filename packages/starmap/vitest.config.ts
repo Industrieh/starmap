@@ -1,7 +1,7 @@
 import { defineConfig, type ViteUserConfig } from 'vitest/config'
 
 /**
- * Test setup for `@cotontigeh/starmap`.
+ * Test setup for `@industrieh/starmap`.
  *
  * No DOM environment: the library is plain TypeScript, so Node is enough — and
  * running without a DOM is itself a guarantee that no test leans on a browser

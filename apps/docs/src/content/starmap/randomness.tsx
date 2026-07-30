@@ -49,7 +49,7 @@ export default function Content(): JSX.Element {
 
       <CodeBlock
         lang="ts"
-        code={`import { createRng } from '@cotontigeh/starmap'
+        code={`import { createRng } from '@industrieh/starmap'
 
 const rng = createRng('my-game-001')
 
@@ -195,7 +195,7 @@ const radius = rng.randInt(10, 20)  //    now a different number`}
       <CodeBlock
         lang="ts"
         filename="generate.ts"
-        code={`import { createGalaxy, createRng, type Galaxy } from '@cotontigeh/starmap'
+        code={`import { createGalaxy, createRng, type Galaxy } from '@industrieh/starmap'
 
 const NAMES = ['Sol', 'Vega', 'Rigel', 'Altair', 'Lyra', 'Cygnus']
 const TYPES = [
@@ -263,7 +263,7 @@ export function generate(seed: string, count: number): Galaxy {
 
       <CodeBlock
         lang="ts"
-        code={`import { hashSeed, mulberry32 } from '@cotontigeh/starmap'
+        code={`import { hashSeed, mulberry32 } from '@industrieh/starmap'
 
 // FNV-1a: any string to an unsigned 32-bit integer.
 hashSeed('sol')       // 3795205537

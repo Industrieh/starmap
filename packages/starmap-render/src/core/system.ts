@@ -23,7 +23,7 @@ import {
   type Station,
   type SystemsById,
   type Vec2,
-} from '@cotontigeh/starmap'
+} from '@industrieh/starmap'
 
 import { arcPath, backdropStars, systemViewBox, SYSTEM_MARGIN, type ViewBox } from './geometry'
 import { svgDocument, type DocumentOptions } from './root'

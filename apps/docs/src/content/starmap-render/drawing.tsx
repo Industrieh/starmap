@@ -225,7 +225,7 @@ export default function Content(): JSX.Element {
 
       <CodeBlock
         lang="ts"
-        code={`import { indexSystems } from '@cotontigeh/starmap'
+        code={`import { indexSystems } from '@industrieh/starmap'
 
 renderSystem(system, { systems: indexSystems(galaxy) })
 // the Sol Gate is now labelled "Vega"`}
@@ -257,7 +257,7 @@ renderSystem(system, { systems: indexSystems(galaxy) })
 
       <CodeBlock
         lang="ts"
-        code={`import { arcPath } from '@cotontigeh/starmap-render'
+        code={`import { arcPath } from '@industrieh/starmap-render'
 
 arcPath(220, 0, 120)
 // 'M 220 0 A 220 220 0 0 1 -110 190.53'

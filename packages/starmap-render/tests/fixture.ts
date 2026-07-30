@@ -7,7 +7,7 @@
  * star, which is the case most likely to produce an empty layer.
  */
 
-import { createGalaxy, type Galaxy, type StarSystem } from '@cotontigeh/starmap'
+import { createGalaxy, type Galaxy, type StarSystem } from '@industrieh/starmap'
 
 export const galaxy: Galaxy = createGalaxy({
   seed: 'render-test',

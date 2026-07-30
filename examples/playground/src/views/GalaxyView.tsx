@@ -12,7 +12,7 @@
  * same coordinate system — world units, straight out of `system.x` / `system.y`.
  */
 
-import { findRoute, type Galaxy, type Route } from '@cotontigeh/starmap'
+import { findRoute, type Galaxy, type Route } from '@industrieh/starmap'
 import {
   el,
   galaxyViewBox,
@@ -20,7 +20,7 @@ import {
   renderGalaxyContent,
   svgDocument,
   type ThemeInput,
-} from '@cotontigeh/starmap-render'
+} from '@industrieh/starmap-render'
 import { useMemo, type JSX } from 'react'
 
 import { SvgStage, type Hit } from './SvgStage'

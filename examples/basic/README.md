@@ -1,4 +1,4 @@
-# @cotontigeh/example-basic
+# @industrieh/example-basic
 
 Runnable example: describe a universe by hand, build it, check it, query it,
 animate it.

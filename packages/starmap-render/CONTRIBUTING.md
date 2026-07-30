@@ -1,4 +1,4 @@
-# Contributing to `@cotontigeh/starmap-render`
+# Contributing to `@industrieh/starmap-render`
 
 Thanks for taking the time. This file covers the package in
 `packages/starmap-render/`. The core has [its own
@@ -33,7 +33,7 @@ bun run check
 resolves the whole workspace.
 
 This package depends on the core through `workspace:*`, and its tests alias
-`@cotontigeh/starmap` to the core's **sources** — so you never have to build the
+`@industrieh/starmap` to the core's **sources** — so you never have to build the
 core before working here.
 
 ## The commands
@@ -52,7 +52,7 @@ everything. Run it before you push.
 
 ## The house rule
 
-**`src/` imports `@cotontigeh/starmap`, or something relative. Nothing else.**
+**`src/` imports `@industrieh/starmap`, or something relative. Nothing else.**
 
 No DOM, no framework, no stylesheet, no clock, no unseeded randomness, no
 `.tsx`, no `.css`. `tests/purity.test.ts` checks every source file, and

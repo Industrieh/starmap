@@ -66,7 +66,7 @@ export default function Content(): JSX.Element {
           <CodeBlock
             lang="ts"
             filename="draw.ts"
-            code={`import { createGalaxy } from '@cotontigeh/starmap'
+            code={`import { createGalaxy } from '@industrieh/starmap'
 
 const galaxy = createGalaxy({
   systems: [
@@ -92,7 +92,7 @@ const galaxy = createGalaxy({
           <P>One call. It returns a complete, standalone SVG document.</P>
           <CodeBlock
             lang="ts"
-            code={`import { renderSystem } from '@cotontigeh/starmap-render'
+            code={`import { renderSystem } from '@industrieh/starmap-render'
 
 const svg = renderSystem(galaxy.systems[0], { t: 3 })
 
@@ -180,7 +180,7 @@ return new Response(svg, { headers: { 'content-type': 'image/svg+xml' } })`}
       <CodeBlock
         lang="ts"
         filename="animate.ts"
-        code={`import { renderSystemContent, systemViewBox, viewBoxAttr } from '@cotontigeh/starmap-render'
+        code={`import { renderSystemContent, systemViewBox, viewBoxAttr } from '@industrieh/starmap-render'
 
 // The framing does not change, so compute it once.
 const box = viewBoxAttr(systemViewBox(system))
@@ -218,8 +218,8 @@ frame()`}
 
       <CodeBlock
         lang="ts"
-        code={`import { findRoute } from '@cotontigeh/starmap'
-import { renderGalaxy } from '@cotontigeh/starmap-render'
+        code={`import { findRoute } from '@industrieh/starmap'
+import { renderGalaxy } from '@industrieh/starmap-render'
 
 const route = findRoute(galaxy, 'sol', 'vega')
 

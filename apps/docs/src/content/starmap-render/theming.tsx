@@ -212,7 +212,7 @@ factions: {       // by faction.id — drawn as the ring around a system
 
       <CodeBlock
         lang="ts"
-        code={`import { pickColor, resolveTheme } from '@cotontigeh/starmap-render'
+        code={`import { pickColor, resolveTheme } from '@industrieh/starmap-render'
 
 const theme = resolveTheme({ planets: { terran: '#7ee787' } })
 
@@ -259,7 +259,7 @@ pickColor(theme.planets, undefined)     // '#8b8377' — the default too`}
       <CodeBlock
         lang="ts"
         filename="theme-light.ts"
-        code={`import type { ThemeInput } from '@cotontigeh/starmap-render'
+        code={`import type { ThemeInput } from '@industrieh/starmap-render'
 
 export const LIGHT: ThemeInput = {
   background: '#f8fafc',
@@ -295,7 +295,7 @@ renderSystem(system, { theme: LIGHT })`}
 
       <CodeBlock
         lang="ts"
-        code={`import { resolveTheme } from '@cotontigeh/starmap-render'
+        code={`import { resolveTheme } from '@industrieh/starmap-render'
 
 // Once.
 const theme = resolveTheme(LIGHT)

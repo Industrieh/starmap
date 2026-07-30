@@ -1,5 +1,5 @@
 {
-  "name": "@cotontigeh/example-playground",
+  "name": "@industrieh/example-playground",
   "version": "0.0.0",
   "private": true,
   "description": "The full app: generate a galaxy, fly through it, look at the systems.",
@@ -12,8 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cotontigeh/starmap": "workspace:*",
-    "@cotontigeh/starmap-render": "workspace:*",
+    "@industrieh/starmap": "workspace:*",
+    "@industrieh/starmap-render": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

@@ -33,7 +33,7 @@ export default function Content(): JSX.Element {
   return (
     <>
       <Lead>
-        Every export of <C>@cotontigeh/starmap-render</C>, with its signature. Everything comes from
+        Every export of <C>@industrieh/starmap-render</C>, with its signature. Everything comes from
         the package root.
       </Lead>
 

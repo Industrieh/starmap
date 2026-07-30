@@ -406,7 +406,7 @@ rule. `tests/purity.test.ts` walks every source file and rejects:
 
 It reads the sources, not the bundle, so it needs no build. Comments are
 stripped first — a JSDoc example may legitimately import
-`@cotontigeh/starmap`, and the word "document" is fine in prose.
+`@industrieh/starmap`, and the word "document" is fine in prose.
 
 **`tsconfig.base.json` drops `DOM` from `lib`.** A stray `document.` does not
 compile, so the purity test is the second line of defence, not the first.

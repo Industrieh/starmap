@@ -1,9 +1,9 @@
 import { defineConfig, type UserConfig } from 'tsdown'
 
 /**
- * Build setup for `@cotontigeh/starmap-render`.
+ * Build setup for `@industrieh/starmap-render`.
  *
- * `@cotontigeh/starmap` is a production dependency and stays **external**: an
+ * `@industrieh/starmap` is a production dependency and stays **external**: an
  * application ends up with one copy of the core, shared with its own imports of
  * it. tsdown externalises `dependencies` by default — it is spelled out here
  * because the opposite would be a silent bug, two data models in one program,
@@ -19,7 +19,7 @@ const config: UserConfig = defineConfig({
   clean: true,
   sourcemap: true,
   deps: {
-    neverBundle: ['@cotontigeh/starmap'],
+    neverBundle: ['@industrieh/starmap'],
   },
 })
 

@@ -54,7 +54,7 @@ export default function Content(): JSX.Element {
 
       <CodeBlock
         lang="ts"
-        code={`import { systemPositions } from '@cotontigeh/starmap'
+        code={`import { systemPositions } from '@industrieh/starmap'
 
 const at = systemPositions(system, 0)   // t = 0 seconds
 
@@ -107,7 +107,7 @@ at.get('sol-p1-st0')   // { x: -161.42, y: 141.42 }`}
       <CodeBlock
         lang="ts"
         filename="render.ts"
-        code={`import { systemPositions } from '@cotontigeh/starmap'
+        code={`import { systemPositions } from '@industrieh/starmap'
 
 let t = 0
 let last = performance.now()
@@ -158,7 +158,7 @@ requestAnimationFrame(frame)`}
 
       <CodeBlock
         lang="ts"
-        code={`import { orbitPos } from '@cotontigeh/starmap'
+        code={`import { orbitPos } from '@industrieh/starmap'
 
 // orbitPos(orbit, angleDeg, period, t)
 orbitPos(100, 0, 0, 0)    // { x: 100, y: 0 }   — period 0: never moves
@@ -176,7 +176,7 @@ const ship = orbitPos(planet.orbit + 30, 210, 40, t)`}
 
       <CodeBlock
         lang="ts"
-        code={`import { fieldCenter } from '@cotontigeh/starmap'
+        code={`import { fieldCenter } from '@industrieh/starmap'
 
 fieldCenter(belt)      // { x: 176.78, y: 176.78 }  — mid-arc
 fieldCenter(cluster)   // { x: -120, y: 60 }        — its own centre`}
@@ -206,7 +206,7 @@ fieldCenter(cluster)   // { x: -120, y: 60 }        — its own centre`}
 
       <CodeBlock
         lang="ts"
-        code={`import { round } from '@cotontigeh/starmap'
+        code={`import { round } from '@industrieh/starmap'
 
 round(0.30000000000000004)   // 0.3
 round(1.23456, 3)            // 1.235   — the second argument is decimal places`}

@@ -1,8 +1,8 @@
 {
-  "name": "@cotontigeh/starmap-render",
+  "name": "@industrieh/starmap-render",
   "version": "0.1.0",
   "private": true,
-  "description": "Turn a @cotontigeh/starmap universe into SVG. Strings, not components: no DOM, no framework.",
+  "description": "Turn a @industrieh/starmap universe into SVG. Strings, not components: no DOM, no framework.",
   "files": [
     "dist"
   ],
@@ -23,7 +23,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cotontigeh/starmap": "workspace:*"
+    "@industrieh/starmap": "workspace:*"
   },
   "devDependencies": {
     "tsdown": "^0.22.14",

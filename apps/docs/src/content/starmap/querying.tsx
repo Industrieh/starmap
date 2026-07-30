@@ -52,7 +52,7 @@ export default function Content(): JSX.Element {
 
       <CodeBlock
         lang="ts"
-        code={`import { indexGalaxy, indexSystems } from '@cotontigeh/starmap'
+        code={`import { indexGalaxy, indexSystems } from '@industrieh/starmap'
 
 const index = indexGalaxy(galaxy)     // everything, keyed by id
 const systems = indexSystems(galaxy)  // just systems — smaller, when that is all you need`}
@@ -117,7 +117,7 @@ switch (entry?.kind) {
 
       <CodeBlock
         lang="ts"
-        code={`import { systemOf } from '@cotontigeh/starmap'
+        code={`import { systemOf } from '@industrieh/starmap'
 
 systemOf(index, 'sol-p1')?.name      // 'Sol'   — from a planet
 systemOf(index, 'sol-star')?.name    // 'Sol'   — from a star
@@ -141,7 +141,7 @@ systemOf(index, 'ghost')             // null    — no object carries that id`}
 
       <CodeBlock
         lang="ts"
-        code={`import { lanesOf, neighboursOf, stationsOf } from '@cotontigeh/starmap'
+        code={`import { lanesOf, neighboursOf, stationsOf } from '@industrieh/starmap'
 
 lanesOf(galaxy, 'b').map((l) => l.id)         // ['lane-a-b', 'lane-b-c']
 neighboursOf(galaxy, 'b').map((s) => s.id)    // ['a', 'c']
@@ -162,7 +162,7 @@ stationsOf(system).map((s) => s.name)         // ['High Anchorage']`}
 
       <CodeBlock
         lang="ts"
-        code={`import { findRoute } from '@cotontigeh/starmap'
+        code={`import { findRoute } from '@industrieh/starmap'
 
 findRoute(galaxy, 'a', 'c')
 // { systemIds: ['a', 'b', 'c'], distance: 200, jumps: 2 }
@@ -226,7 +226,7 @@ findRoute(galaxy, 'x', 'y')
 
       <CodeBlock
         lang="ts"
-        code={`import { connectedComponents } from '@cotontigeh/starmap'
+        code={`import { connectedComponents } from '@industrieh/starmap'
 
 const parts = connectedComponents(galaxy)
 // [['a', 'b', 'c'], ['island']]

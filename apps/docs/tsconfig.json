@@ -34,8 +34,8 @@
     // still resolve to their sources; see the note in the base config.
     "paths": {
       "@/*": ["./src/*"],
-      "@cotontigeh/starmap": ["../../packages/starmap/src/index.ts"],
-      "@cotontigeh/starmap-render": ["../../packages/starmap-render/src/index.ts"]
+      "@industrieh/starmap": ["../../packages/starmap/src/index.ts"],
+      "@industrieh/starmap-render": ["../../packages/starmap-render/src/index.ts"]
     }
   }
 }
