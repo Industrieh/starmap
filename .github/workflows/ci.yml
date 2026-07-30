@@ -1,0 +1,62 @@
+# The check suite: format, lint, types, tests, build.
+#
+# It runs on every push to `main`, on every pull request, and — through
+# `workflow_call` — as the gate the release workflow has to pass before anything
+# reaches npm. One definition, three triggers: a release can never be published
+# by a laxer set of checks than a pull request had to satisfy.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+# A new push to a branch makes the previous run pointless — cancel it. `main` is
+# left alone: its history is what the release workflow reuses.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: format · lint · types · tests · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      # `--frozen-lockfile` makes an out-of-date `bun.lock` a failure rather
+      # than something CI silently fixes for you.
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      # Every step below runs even if an earlier one failed: one push should
+      # report every problem it introduced, not just the first.
+      - name: Format
+        if: ${{ !cancelled() }}
+        run: bun run fmt:check
+
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: bun run lint
+
+      - name: Types
+        if: ${{ !cancelled() }}
+        run: bun run typecheck
+
+      - name: Tests
+        if: ${{ !cancelled() }}
+        run: bun run test
+
+      - name: Build
+        if: ${{ !cancelled() }}
+        run: bun run build

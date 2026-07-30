@@ -1,0 +1,13 @@
+{
+  "mode": "pre",
+  "tag": "beta",
+  "initialVersions": {
+    "@industrieh/docs": "0.1.0",
+    "@industrieh/example-basic": "0.0.0",
+    "@industrieh/example-basic-svg-generation": "0.0.0",
+    "@industrieh/example-playground": "0.0.0",
+    "@industrieh/starmap": "0.0.0",
+    "@industrieh/starmap-render": "0.0.0"
+  },
+  "changesets": ["first-public-beta"]
+}

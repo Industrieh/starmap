@@ -19,9 +19,15 @@
     "dev": "bun run --filter '@industrieh/example-playground' dev",
     "docs": "bun run --filter '@industrieh/docs' dev",
     "example": "bun run --filter '@industrieh/example-basic' start",
-    "example:svg": "bun run --filter '@industrieh/example-basic-svg-generation' start"
+    "example:svg": "bun run --filter '@industrieh/example-basic-svg-generation' start",
+    "changeset": "changeset",
+    "changeset:status": "changeset status",
+    "changeset:version": "changeset version && bun run scripts/relock.ts",
+    "release:dry-run": "bun run scripts/publish.ts --dry-run",
+    "release:publish": "bun run scripts/publish.ts"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "@types/node": "^26.1.2",
     "oxfmt": "^0.61.0",
     "oxlint": "^1.76.0",

@@ -1,0 +1,75 @@
+# Publishes the packages to npm when a release is published from the GitHub UI.
+#
+# The flow is: you create a release on GitHub → the full check suite runs → if
+# and only if it is green, the packages go to npm.
+#
+# What gets published is whatever version sits in each `package.json` **at the
+# commit the release tag points at**. So the order is always: merge the "Version
+# packages" pull request first, then create the release from the resulting
+# commit. Publishing a tag from before the bump would re-publish the version
+# that is already online, which the publish script detects and skips.
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  # The exact same suite pull requests have to pass. Nothing is published if
+  # anything here is red.
+  check:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish to npm
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # A GitHub Environment lets you require a manual approval before the token
+    # is ever handed out. Create it in Settings → Environments, or delete these
+    # two lines if you would rather publish without a gate.
+    environment: npm
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      # npm does not publish anything here — `bun publish` does, because it is
+      # the one that rewrites the `workspace:*` ranges. npm is only used by the
+      # publish script to ask the registry whether a version already exists,
+      # which needs no credentials.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      # Only the two published packages: the docs site and the examples have
+      # nothing to do with a release.
+      - name: Build the packages
+        run: bun run --filter './packages/*' build
+
+      # Written by hand rather than through `setup-node`'s `registry-url`: that
+      # one points npm at a config file of its own through an environment
+      # variable, which `bun publish` does not read. The token goes through the
+      # environment, never into the command line, so it cannot land in a log.
+      - name: Authenticate to npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > ~/.npmrc
+
+      - name: Publish
+        run: bun run release:publish
+
+      - name: Forget the credentials
+        if: always()
+        run: rm -f ~/.npmrc

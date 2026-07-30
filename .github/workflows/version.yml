@@ -1,0 +1,56 @@
+# Keeps a "Version packages" pull request open, ready to merge.
+#
+# Every push to `main` carrying changeset files makes this workflow open — or
+# update — a single pull request that consumes them: it bumps the versions,
+# writes the CHANGELOG entries, and deletes the changeset files. Merging that
+# pull request is what decides a release exists. Creating the GitHub release is
+# what ships it.
+#
+# This workflow **never publishes**. That is `release.yml`, and only from the
+# GitHub release UI.
+#
+# It is a convenience, not a requirement: `bun run changeset:version` on your
+# machine, committed by hand, does exactly the same thing. Delete this file if
+# you would rather not have a bot opening pull requests.
+name: Version
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: version
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version:
+    name: Version packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # The action compares against the base branch, so it needs real history.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      # No `publish:` input on purpose — without it the action only ever opens
+      # the version pull request. npm is out of its reach.
+      - uses: changesets/action@v1
+        with:
+          version: bun run changeset:version
+          title: 'chore: version packages'
+          commit: 'chore: version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

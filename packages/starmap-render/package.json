@@ -1,8 +1,27 @@
 {
   "name": "@industrieh/starmap-render",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.0-beta.0",
   "description": "Turn a @industrieh/starmap universe into SVG. Strings, not components: no DOM, no framework.",
+  "keywords": [
+    "galaxy",
+    "gamedev",
+    "renderer",
+    "space",
+    "starmap",
+    "svg",
+    "typescript"
+  ],
+  "homepage": "https://github.com/Industrieh/starmap/tree/main/packages/starmap-render#readme",
+  "bugs": {
+    "url": "https://github.com/Industrieh/starmap/issues"
+  },
+  "license": "MIT",
+  "author": "Industrieh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Industrieh/starmap.git",
+    "directory": "packages/starmap-render"
+  },
   "files": [
     "dist"
   ],
@@ -16,6 +35,9 @@
       "default": "./dist/index.mjs"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc --noEmit && tsdown",
     "test": "vitest run",
@@ -28,5 +50,8 @@
   "devDependencies": {
     "tsdown": "^0.22.14",
     "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

@@ -18,8 +18,8 @@
   "ignorePatterns": ["**/dist", "**/.next", "apps/docs/src/components/ui/**"],
   "overrides": [
     {
-      // Tests, tooling and examples: a Node context.
-      "files": ["**/tests/**/*.ts", "**/*.config.ts", "examples/**/*.ts"],
+      // Tests, tooling, release scripts and examples: a Node context.
+      "files": ["**/tests/**/*.ts", "**/*.config.ts", "scripts/**/*.ts", "examples/**/*.ts"],
       "env": {
         "node": true
       }
@@ -27,7 +27,7 @@
     {
       // The React example runs in a browser instead, and imports a stylesheet
       // there — a legitimate side-effect import.
-      "files": ["examples/interactive-react/src/**", "examples/playground/src/**"],
+      "files": ["examples/playground/src/**"],
       "env": {
         "browser": true
       },
