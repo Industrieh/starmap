@@ -19,8 +19,7 @@
     "dev": "bun run --filter '@industrieh/example-playground' dev",
     "docs": "bun run --filter '@industrieh/docs' dev",
     "example": "bun run --filter '@industrieh/example-basic' start",
-    "example:svg": "bun run --filter '@industrieh/example-basic-svg-generation' start",
-    "example:react": "bun run --filter '@industrieh/example-interactive-react' start"
+    "example:svg": "bun run --filter '@industrieh/example-basic-svg-generation' start"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
