@@ -1,0 +1,15 @@
+{
+  // Without this file the repo's scripts were the only TypeScript here that no
+  // tsconfig covered, so an editor typechecked them against its own defaults and
+  // reported `Cannot find name 'node:fs'` on every one of them. The base config
+  // already declares `"types": ["node"]`; the scripts just had no way to reach
+  // it.
+  "extends": "../tsconfig.base.json",
+  "include": ["."],
+  "compilerOptions": {
+    // These are programs, not libraries: they export nothing, so there is no
+    // public API for `isolatedDeclarations` to protect — and it would otherwise
+    // demand a return type on every local helper.
+    "isolatedDeclarations": false
+  }
+}
