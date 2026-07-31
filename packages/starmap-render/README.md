@@ -40,6 +40,7 @@ the core.
 - [Make it interactive](#make-it-interactive)
 - [API](#api)
 - [Guides](#guides)
+- [Working with an AI](#working-with-an-ai)
 
 ## Install
 
@@ -298,6 +299,38 @@ stroke widths — are fractions of the view, so a system 300 units across and on
 - [docs/architecture.md](docs/architecture.md) — how the code is built, file by
   file
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to work on the package
+
+## Working with an AI
+
+This library is younger than the training data of most assistants, so a model
+asked about it cold will invent an API that looks plausible and does not exist.
+Two files exist to prevent that:
+
+| file                                                             | what it is                                                                      |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [`/llms.txt`](https://starmap.industrieh.dev/llms.txt)           | the map — every documentation page with a one-line description, a few kilobytes |
+| [`/llms-full.txt`](https://starmap.industrieh.dev/llms-full.txt) | everything — both packages' READMEs and guides in one file, ~120 KB             |
+
+In an agent that reads project instructions — Claude Code, Cursor, Copilot — one
+line does it:
+
+```md
+When writing code against @industrieh/starmap-render, read
+https://starmap.industrieh.dev/llms-full.txt first. It is the complete
+documentation of the renderer and of the core it draws.
+```
+
+In a chat, paste the URL. Offline, download the file and attach it — both are
+plain text.
+
+Two things worth telling a model up front, because nothing in the types says so:
+
+- **This package returns strings, not components.** If it suggests a `<Galaxy />`
+  or a hook, it is inventing. `renderGalaxy()` gives you SVG markup, and where it
+  goes is your decision.
+- **It draws one frame, for one moment.** Pan, zoom, hover and selection are not
+  here on purpose — `data-id` and `data-kind` are the hooks, the handlers are
+  yours.
 
 ## Developing
 

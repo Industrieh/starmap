@@ -40,6 +40,7 @@ a game engine.
 - [Generate it with a script](#generate-it-with-a-script)
 - [API](#api)
 - [Guides](#guides)
+- [Working with an AI](#working-with-an-ai)
 
 ## Install
 
@@ -397,6 +398,37 @@ A system's star always sits at `(0, 0)`.
 - [docs/architecture.md](docs/architecture.md) — how the code is built, file by
   file
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to work on the package
+
+## Working with an AI
+
+This library is younger than the training data of most assistants, so a model
+asked about it cold will invent an API that looks plausible and does not exist.
+Two files exist to prevent that:
+
+| file                                                             | what it is                                                                      |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [`/llms.txt`](https://starmap.industrieh.dev/llms.txt)           | the map — every documentation page with a one-line description, a few kilobytes |
+| [`/llms-full.txt`](https://starmap.industrieh.dev/llms-full.txt) | everything — both packages' READMEs and guides in one file, ~120 KB             |
+
+In an agent that reads project instructions — Claude Code, Cursor, Copilot — one
+line does it:
+
+```md
+When writing code against @industrieh/starmap, read
+https://starmap.industrieh.dev/llms-full.txt first. It is the complete
+documentation.
+```
+
+In a chat, paste the URL. Offline, download the file and attach it — both are
+plain text.
+
+Two things worth telling a model up front, because the type system will not
+enforce either:
+
+- **This package never draws.** If it suggests a `color` field or a `render()`
+  here, it is thinking of `@industrieh/starmap-render`.
+- **It never invents a value that carries meaning.** A missing `type` stays
+  `undefined`; the library fills in only what follows from what you wrote.
 
 ## Developing
 
