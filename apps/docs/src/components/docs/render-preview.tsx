@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
  *
  * @returns width ÷ height, or `1` if the string carries no usable `viewBox`.
  */
-function aspectOf(svg: string): number {
+export function aspectOf(svg: string): number {
   const match = /viewBox="(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+)"/.exec(svg)
   if (!match) return 1
 
