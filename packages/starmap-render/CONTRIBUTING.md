@@ -23,8 +23,8 @@ README](../../README.md).
 ## Get set up
 
 ```bash
-git clone git@github.com:cotontigeh/test-map-star.git
-cd test-map-star
+git clone git@github.com:industrieh/starmap.git
+cd starmap
 bun install
 bun run check
 ```

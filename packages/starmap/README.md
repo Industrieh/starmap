@@ -51,7 +51,7 @@ Not on npm yet. Until then, install it from a path or from git:
 
 ```bash
 bun add @industrieh/starmap@file:../starmap/packages/starmap
-bun add github:cotontigeh/starmap
+bun add github:industrieh/starmap
 ```
 
 Nothing to install alongside it — no dependencies, no peer dependencies.

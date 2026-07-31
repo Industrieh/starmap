@@ -310,7 +310,7 @@ Until they are on npm, install them from a path or from git:
 
 ```bash
 bun add @industrieh/starmap@file:../starmap/packages/starmap
-bun add github:cotontigeh/starmap
+bun add github:industrieh/starmap
 ```
 
 ---
