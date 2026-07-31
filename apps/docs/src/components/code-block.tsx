@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
  * toggle without a single line of JavaScript.
  */
 
-const LANGUAGES = ['ts', 'tsx', 'bash', 'json'] as const satisfies readonly BundledLanguage[]
+const LANGUAGES = ['ts', 'tsx', 'bash', 'json', 'md'] as const satisfies readonly BundledLanguage[]
 
 /**
  * One highlighter for the whole build rather than one per page. Creating it

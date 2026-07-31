@@ -9,30 +9,32 @@ import {
   NavigationMenuItem,
   NavigationMenuList,
 } from '@/components/ui/navigation-menu'
-import { LIBRARIES, routes } from '@/lib/routes'
+import { NAV_TABS, isTabActive } from '@/lib/routes'
 import { cn } from '@/lib/utils'
 
 /**
- * One tab per library — the move that lets two documentations share one site
- * without either of them feeling like a subsection of the other.
+ * The tabs of the header: the documentation index, then one per library — the
+ * move that lets two documentations share one site without either of them
+ * feeling like a subsection of the other.
  *
- * A tab is active for its whole subtree, so it stays lit while you read any page
- * of that library.
+ * A library tab is active for its whole subtree, so it stays lit while you read
+ * any page of that library; `/docs` matches exactly, or it would be lit
+ * everywhere. Both rules live in `isTabActive`, next to the list itself, because
+ * the mobile drawer applies the same ones.
  */
-export function LibraryTabs(): JSX.Element {
+export function NavTabs(): JSX.Element {
   const pathname = usePathname()
 
   return (
     <NavigationMenu>
       <NavigationMenuList className="gap-1">
-        {LIBRARIES.map((library) => {
-          const href = routes.library(library.slug)
-          const active = pathname === href || pathname.startsWith(`${href}/`)
+        {NAV_TABS.map((tab) => {
+          const active = isTabActive(tab, pathname)
 
           return (
-            <NavigationMenuItem key={library.slug}>
+            <NavigationMenuItem key={tab.href}>
               <Link
-                href={href}
+                href={tab.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   // The tab is exactly as tall as the bar, not one pixel less.
@@ -45,7 +47,7 @@ export function LibraryTabs(): JSX.Element {
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {library.name}
+                {tab.label}
               </Link>
             </NavigationMenuItem>
           )

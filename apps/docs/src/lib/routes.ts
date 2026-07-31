@@ -252,6 +252,44 @@ export const routes = {
   githubPackage: (library: string): string => `${GITHUB_URL}/tree/main/packages/${library}`,
 } as const
 
+/** One entry of the header, and of the drawer that replaces it below `md`. */
+export type NavTab = {
+  href: string
+  label: string
+  /**
+   * Whether the tab lights up for its subtree or only for itself.
+   *
+   * A library tab stays lit while you read any of its pages, so it matches the
+   * subtree. `/docs` is the parent of every one of those pages, so the same rule
+   * would keep it lit everywhere and tell you nothing — it matches exactly.
+   */
+  exact: boolean
+}
+
+/**
+ * The header, in one list, so the desktop tabs and the mobile drawer cannot
+ * disagree about what the site contains.
+ *
+ * `/docs` is first and named in full: it is the only page that introduces both
+ * libraries at once, and without a link here it was reachable from the footer
+ * alone.
+ */
+export const NAV_TABS: readonly NavTab[] = [
+  { href: routes.docs, label: 'Documentation', exact: true },
+  ...LIBRARIES.map((library) => ({
+    href: routes.library(library.slug),
+    label: library.name,
+    exact: false,
+  })),
+]
+
+/** Whether a tab should read as the current one, for a given path. */
+export function isTabActive(tab: NavTab, pathname: string): boolean {
+  return tab.exact
+    ? pathname === tab.href
+    : pathname === tab.href || pathname.startsWith(`${tab.href}/`)
+}
+
 /** The library a URL segment refers to, or `undefined` if there is no such library. */
 export function findLibrary(slug: string): Library | undefined {
   return LIBRARIES.find((library) => library.slug === slug)

@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import type { JSX } from 'react'
 
-import { LibraryTabs } from '@/components/library-tabs'
 import { MobileNav } from '@/components/mobile-nav'
 import { ModeToggle } from '@/components/mode-toggle'
+import { NavTabs } from '@/components/nav-tabs'
 import { SiteLogo } from '@/components/site-logo'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -29,7 +29,7 @@ export function SiteHeader(): JSX.Element {
         <Separator orientation="vertical" className="mx-2 hidden md:block" />
 
         <div className="hidden md:flex">
-          <LibraryTabs />
+          <NavTabs />
         </div>
 
         <div className="ml-auto flex items-center gap-1">

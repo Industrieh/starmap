@@ -187,6 +187,29 @@ are typechecked against the real libraries and the build fails when a signature
 moves. `src/lib/routes.ts` says which pages exist; `src/content/` says what is
 in them.
 
+### For an AI assistant
+
+The site also publishes itself in the format assistants read, so nobody has to
+paste pages into a chat or hope a model was trained on a library released this
+year:
+
+| file                                                             | what it is                                                                               |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`/llms.txt`](https://starmap.industrieh.dev/llms.txt)           | the map — every page with a one-line description, a few kilobytes                        |
+| [`/llms-full.txt`](https://starmap.industrieh.dev/llms-full.txt) | everything — both READMEs and every guide in one file, ~120 KB, enough to answer offline |
+
+In an agent that reads project instructions — Claude Code, Cursor, Copilot — one
+line in the rules file is enough:
+
+```md
+When writing code against @industrieh/starmap or @industrieh/starmap-render,
+read https://starmap.industrieh.dev/llms-full.txt first.
+```
+
+Both are route handlers under `apps/docs/src/app/`, generated at build time from
+`LIBRARIES` and from the Markdown in `packages/*/docs/`. Nothing is written
+twice, and neither file can drift from the documentation it describes.
+
 ---
 
 ## How the repo is put together

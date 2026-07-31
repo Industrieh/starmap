@@ -11,11 +11,11 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { SidebarProvider } from '@/components/ui/sidebar'
-import { LIBRARIES, findLibrary, routes } from '@/lib/routes'
+import { NAV_TABS, findLibrary, isTabActive } from '@/lib/routes'
 import { cn } from '@/lib/utils'
 
 /**
- * Everything the header hides below `md`: the library tabs, and the pages of
+ * Everything the header hides below `md`: the header tabs, and the pages of
  * whichever library you are currently reading.
  *
  * `SidebarProvider` is here because `DocsNav` is built from the sidebar
@@ -47,14 +47,13 @@ export function MobileNav(): JSX.Element {
 
         <div className="overflow-y-auto pb-8">
           <nav className="flex flex-col p-3">
-            {LIBRARIES.map((library) => {
-              const href = routes.library(library.slug)
-              const active = pathname === href || pathname.startsWith(`${href}/`)
+            {NAV_TABS.map((tab) => {
+              const active = isTabActive(tab, pathname)
 
               return (
                 <Link
-                  key={library.slug}
-                  href={href}
+                  key={tab.href}
+                  href={tab.href}
                   onClick={() => setOpen(false)}
                   className={cn(
                     'rounded-md px-3 py-2 text-sm transition-colors',
@@ -63,7 +62,7 @@ export function MobileNav(): JSX.Element {
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
-                  {library.name}
+                  {tab.label}
                 </Link>
               )
             })}
