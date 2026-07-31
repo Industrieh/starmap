@@ -16,6 +16,7 @@ README](../../README.md).
 - [Writing comments and docs](#writing-comments-and-docs)
 - [Style](#style)
 - [Breaking changes](#breaking-changes)
+- [Add a changeset](#add-a-changeset)
 - [Sending a change](#sending-a-change)
 - [Reporting a bug](#reporting-a-bug)
 
@@ -239,12 +240,65 @@ silently is worse than the breaking change itself.
 
 Adding an optional field is not a break. Making an existing field required is.
 
+## Add a changeset
+
+**A pull request that changes what the published package does carries a
+changeset.** Without one, the change is merged and never released.
+
+From the repo root:
+
+```bash
+bun run changeset
+```
+
+It asks which packages changed, how big the bump is, and for a summary. It then
+writes a markdown file in `.changeset/` — commit it along with your change.
+
+Pick the bump by what the change does to the public API:
+
+| bump      | for                                                                    |
+| --------- | ---------------------------------------------------------------------- |
+| **patch** | a fix, a message, a performance change — same API, same accepted input |
+| **minor** | a new export, a new optional field, a new accepted input               |
+| **major** | a removed or renamed export, a field made required, a stricter check   |
+
+A `major` is also a `FORMAT_VERSION` bump — see
+[Breaking changes](#breaking-changes). The two go together.
+
+The summary lands in the CHANGELOG, where it is read by someone upgrading. Say
+what changed **for them**, not what you did to the code:
+
+```md
+---
+'@industrieh/starmap': minor
+---
+
+`findRoute()` now takes a `maxJumps` option. Routes longer than it return
+`undefined` instead of the full path.
+```
+
+Some pull requests need no changeset: docs, tests, CI, tooling, and anything
+touching only `apps/` or `examples/` — those are private and never published.
+When in doubt, add one; an extra patch entry costs nothing.
+
+The repo is in **pre-release mode** (`.changeset/pre.json`, tag `beta`), so
+these bumps come out as `0.1.0-beta.N`. Nothing to do about it — it is just why
+the version you see is not the one you picked.
+
+What happens next is not yours to do: pushing to `main` opens or updates a
+`chore: version packages` pull request
+([version.yml](../../.github/workflows/version.yml)), merging it bumps the
+versions and writes the CHANGELOGs, and publishing a GitHub release ships to npm
+([release.yml](../../.github/workflows/release.yml)). `bun run changeset:status`
+lists what is waiting.
+
 ## Sending a change
 
 ```bash
 git checkout -b feat/short-description
 # ... work ...
 bun run check
+bun run changeset
 git commit -m "feat: add richness to asteroid clusters"
 ```
 
@@ -255,7 +309,8 @@ In the pull request, say:
 
 - what changes for someone already using the library;
 - whether saved galaxies still load;
-- which docs you updated.
+- which docs you updated;
+- and check the changeset is in the diff.
 
 One concern per pull request. A field addition and a refactor in the same branch
 are two reviews pretending to be one.

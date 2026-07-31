@@ -17,6 +17,7 @@ README](../../README.md).
 - [Writing tests](#writing-tests)
 - [Writing comments and docs](#writing-comments-and-docs)
 - [Style](#style)
+- [Add a changeset](#add-a-changeset)
 - [Sending a change](#sending-a-change)
 - [Reporting a bug](#reporting-a-bug)
 
@@ -238,11 +239,64 @@ declaration carries its type — including a parameter with a default value.
 **One dependency.** The core, and nothing else. A change that adds a second one
 needs a very good reason.
 
+## Add a changeset
+
+**A pull request that changes what the published package draws or exposes
+carries a changeset.** Without one, the change is merged and never released.
+
+From the repo root:
+
+```bash
+bun run changeset
+```
+
+It asks which packages changed, how big the bump is, and for a summary. It then
+writes a markdown file in `.changeset/` — commit it along with your change.
+
+Pick the bump by what the change does to the output or the API:
+
+| bump      | for                                                                |
+| --------- | ------------------------------------------------------------------ |
+| **patch** | a drawing fix, a tuned number, a colour correction — same API      |
+| **minor** | a new render option, a new theme key, a new drawable object        |
+| **major** | a removed or renamed export or option, a changed `data-*` contract |
+
+A visual change is a real change. Someone snapshot-testing their drawings will
+see it, so it gets a changeset even when no signature moved.
+
+The summary lands in the CHANGELOG, where it is read by someone upgrading. Say
+what changed **for them**, not what you did to the code:
+
+```md
+---
+'@industrieh/starmap-render': minor
+---
+
+`renderSystem()` now takes a `labels` option. Set it to `false` to draw a system
+without any text — useful for thumbnails.
+```
+
+Some pull requests need no changeset: docs, tests, CI, tooling, and anything
+touching only `apps/` or `examples/` — those are private and never published.
+When in doubt, add one; an extra patch entry costs nothing.
+
+The repo is in **pre-release mode** (`.changeset/pre.json`, tag `beta`), so
+these bumps come out as `0.1.0-beta.N`. Nothing to do about it — it is just why
+the version you see is not the one you picked.
+
+What happens next is not yours to do: pushing to `main` opens or updates a
+`chore: version packages` pull request
+([version.yml](../../.github/workflows/version.yml)), merging it bumps the
+versions and writes the CHANGELOGs, and publishing a GitHub release ships to npm
+([release.yml](../../.github/workflows/release.yml)). `bun run changeset:status`
+lists what is waiting.
+
 ## Sending a change
 
 ```bash
 git checkout -b feat/short-description
 bun run check
+bun run changeset
 git commit -m "feat: draw rings on ice giants"
 ```
 
@@ -250,7 +304,7 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org).
 
 In the pull request, say what changes for someone already using the package, and
 **show the drawing** — before and after. A visual change is not reviewable from
-a diff.
+a diff. Check the changeset is in there too.
 
 ## Reporting a bug
 
