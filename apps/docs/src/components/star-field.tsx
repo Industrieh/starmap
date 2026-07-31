@@ -88,13 +88,20 @@ export function StarField({ className }: { className?: string }): JSX.Element {
         preserveAspectRatio="xMidYMid slice"
         className="size-full text-foreground"
       >
-        <g stroke="currentColor" strokeWidth="0.5" className="opacity-[0.09] dark:opacity-[0.13]">
+        {/* The two modes need different numbers to read alike. Dark ink on white
+            washes out where light ink on black does not: at the opacities this
+            started with, a lane sat at 1.21:1 in light against 1.34:1 in dark,
+            and a median star at 1.43:1 against 2.34:1 — the sky was there in
+            dark and gone in light. These bring light up to the same measured
+            contrast, stopping a little short of it because a dark dot on white
+            reads heavier than a light dot of equal contrast on black. */}
+        <g stroke="currentColor" strokeWidth="0.5" className="opacity-[0.16] dark:opacity-[0.13]">
           {SKY.lanes.map((lane) => (
             <line key={lane.id} x1={lane.a.x} y1={lane.a.y} x2={lane.b.x} y2={lane.b.y} />
           ))}
         </g>
 
-        <g fill="currentColor" className="opacity-40 dark:opacity-70">
+        <g fill="currentColor" className="opacity-[0.62] dark:opacity-70">
           {SKY.stars.map((star) => (
             <circle key={star.id} cx={star.x} cy={star.y} r={star.r} opacity={star.o} />
           ))}

@@ -59,6 +59,18 @@
   --header-height: 3.5rem;
 }
 
+/* The stock shadcn neutral palette, with the light mode's two washed-out values
+   corrected.
+
+   `--muted-foreground` carries most of the prose on this site — leads, feature
+   descriptions, captions, the header links — and shadcn's `0.556` lands at
+   4.74:1 on white. That clears AA by a hair, but the same role in dark mode sits
+   at 7.66:1, so the two modes were never reading alike: dark comfortable, light
+   at the floor. `0.45` is 7.46:1, which is the parity.
+
+   `--border` at `0.922` is 1.26:1 — a hairline that disappears on a bright
+   screen, taking the card and code-block edges with it. `0.87` is 1.48:1, still
+   a hairline, actually visible. */
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -71,12 +83,12 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.45 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: oklch(0.87 0 0);
+  --input: oklch(0.87 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -90,7 +102,7 @@
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-border: oklch(0.87 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 }
 
