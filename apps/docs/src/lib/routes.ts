@@ -16,6 +16,9 @@
  * because it is plain data — no React, no server, importable from anywhere.
  */
 
+import starmapRenderPkg from '../../../../packages/starmap-render/package.json'
+import starmapPkg from '../../../../packages/starmap/package.json'
+
 /** A single documentation page, one entry in the sidebar. */
 export type DocPage = {
   /** Last segment of the URL, and the key `generateStaticParams` emits. */
@@ -39,6 +42,11 @@ export type Library = {
   packageName: string
   /** What the tabs show, short enough to sit in a header. */
   name: string
+  /**
+   * Read from the package's own `package.json`, never typed here: `changeset
+   * version` bumps that file, and a number copied into this one would be wrong
+   * the day after a release.
+   */
   version: string
   tagline: string
   /** A paragraph for the home page and the library index. */
@@ -57,7 +65,7 @@ export const LIBRARIES: readonly Library[] = [
     slug: 'starmap',
     packageName: '@industrieh/starmap',
     name: 'starmap',
-    version: '0.1.0',
+    version: starmapPkg.version,
     tagline: 'Describe, validate and query a star universe.',
     summary:
       'The core. You describe your universe with a typed object, `createGalaxy()` checks and completes it, and you get back what you need to query it: indexes, routes, orbital positions over time. No dependencies, no DOM, no notion of rendering.',
@@ -138,7 +146,7 @@ export const LIBRARIES: readonly Library[] = [
     slug: 'starmap-render',
     packageName: '@industrieh/starmap-render',
     name: 'starmap-render',
-    version: '0.1.0',
+    version: starmapRenderPkg.version,
     tagline: 'Turn a universe into SVG. Strings, not components.',
     summary:
       'The renderer. `renderSystem()` and `renderGalaxy()` turn a universe into an SVG string: no DOM, no framework, no stylesheet. Colours come in through a theme, interaction stays with your application.',
