@@ -57,6 +57,15 @@ export type Library = {
 export const GITHUB_URL = 'https://github.com/Industrieh/starmap'
 
 /**
+ * Where this site lives, without a trailing slash.
+ *
+ * Only the files meant to be read away from the site need it — `llms.txt` and
+ * `llms-full.txt`, whose links have to resolve from anywhere. Everything the
+ * browser follows stays relative, through `routes` below.
+ */
+export const SITE_URL = 'https://starmap.industrieh.dev'
+
+/**
  * The documentation tree. The groups mirror the Markdown that already exists in
  * each package — the site aggregates it, it does not invent it.
  */
