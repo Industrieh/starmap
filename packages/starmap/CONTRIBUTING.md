@@ -231,11 +231,12 @@ a different package.
 
 ## Breaking changes
 
-`FORMAT_VERSION` in `src/core/create.ts` is the version of the data contract.
+`FORMAT_VERSION` in `src/core/format.ts` is the version of the data contract.
 Bump it whenever a galaxy saved by the old code no longer matches the new shape:
 a renamed field, a changed id scheme, a new required field.
 
-A game compares it to `save.formatVersion` to detect an old save. Changing it
+A game compares it to `save.formatVersion` to detect an old save, and
+`validateGalaxy()` reports a galaxy built for another format as such. Changing it
 silently is worse than the breaking change itself.
 
 Adding an optional field is not a break. Making an existing field required is.

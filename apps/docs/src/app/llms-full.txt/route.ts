@@ -5,9 +5,15 @@
  * fetches it has the whole API, the data model and the design decisions in a
  * single request, and needs no crawl.
  *
- * The source is the Markdown already living next to each package — the same
- * files a reader gets on GitHub. Nothing is written twice: the site renders
- * those guides as React, and this route serves them as text.
+ * The source is the Markdown living next to each package — the same files a
+ * reader gets on GitHub. The site's pages are *not* generated from it: they are
+ * written separately, as TSX under `src/content/`, and cover much of the same
+ * ground. The two can therefore disagree, and a change to one usually wants the
+ * same change in the other.
+ *
+ * Relative links are rewritten on the way through. On GitHub,
+ * `[the data model](docs/data-model.md)` resolves against the file that holds
+ * it; served from this domain it would resolve against `/llms-full.txt` and 404.
  *
  * Everything happens at build time. The route is `force-static`, so the files
  * are read while the site is being prerendered and the result is baked into a
@@ -19,7 +25,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { LIBRARIES, SITE_URL, routes } from '@/lib/routes'
+import { GITHUB_URL, LIBRARIES, SITE_URL, routes } from '@/lib/routes'
+import { versionOf } from '@/lib/versions'
 
 export const dynamic = 'force-static'
 
@@ -63,6 +70,61 @@ function repoRoot(): string {
   }
 }
 
+/** A scheme (`https:`, `mailto:`…), a protocol-relative `//`, or an in-page anchor. */
+const NOT_RELATIVE = /^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i
+
+/**
+ * Every relative link of one Markdown file, resolved against that file's place
+ * in the repository and turned into a GitHub URL.
+ *
+ * Inline links and images (`[text](target)`) and reference definitions
+ * (`[id]: target`) are rewritten. Absolute URLs and anchors are left alone, and
+ * so is anything inside a code fence or a code span, where `[i](x)` is code.
+ *
+ * @param file the path from the repo root, e.g. `packages/starmap/README.md`
+ */
+function absoluteLinks(markdown: string, file: string): string {
+  const base = `${GITHUB_URL}/blob/main/${file}`
+  const resolve = (target: string): string =>
+    NOT_RELATIVE.test(target) ? target : new URL(target, base).href
+
+  let fence: string | null = null
+
+  return markdown
+    .split('\n')
+    .map((line) => {
+      const marker = /^\s*(`{3,}|~{3,})/.exec(line)?.[1]
+      if (marker !== undefined) {
+        // A fence closes on the same character it opened with.
+        if (fence === null) fence = marker[0]
+        else if (marker[0] === fence) fence = null
+        return line
+      }
+      if (fence !== null) return line
+
+      // Split on code spans so their content is never touched: the odd parts
+      // are the spans themselves.
+      return line
+        .split(/(`[^`]*`)/)
+        .map((part, i) =>
+          i % 2 === 1
+            ? part
+            : part
+                .replaceAll(
+                  /(\]\()([^)\s]+)((?:\s+"[^"]*")?\))/g,
+                  (_, open: string, target: string, close: string) =>
+                    open + resolve(target) + close,
+                )
+                .replace(
+                  /^(\s*\[[^\]]+\]:\s+)(\S+)/,
+                  (_, head: string, target: string) => head + resolve(target),
+                ),
+        )
+        .join('')
+    })
+    .join('\n')
+}
+
 function build(): string {
   const root = repoRoot()
   const parts: string[] = [
@@ -82,7 +144,7 @@ function build(): string {
     parts.push(
       '---',
       '',
-      `# Package: ${library.packageName} v${library.version}`,
+      `# Package: ${library.packageName} v${versionOf(library.slug)}`,
       '',
       `${library.tagline}`,
       '',
@@ -96,12 +158,13 @@ function build(): string {
         throw new Error(`llms-full.txt: missing source ${path}`)
       }
 
+      const relative = `packages/${library.slug}/${file}`
       parts.push(
         '---',
         '',
-        `<!-- packages/${library.slug}/${file} -->`,
+        `<!-- ${relative} -->`,
         '',
-        readFileSync(path, 'utf8').trim(),
+        absoluteLinks(readFileSync(path, 'utf8').trim(), relative),
         '',
       )
     }

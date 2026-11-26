@@ -69,3 +69,31 @@ describe('pickRouteStyle', () => {
     expect(pickRouteStyle(DEFAULT_THEME.routes, 'tow-line')).toEqual(DEFAULT_THEME.routes.default)
   })
 })
+
+describe('own keys only', () => {
+  test('a key inherited from Object.prototype falls back to the default', () => {
+    for (const key of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) {
+      expect(pickColor(DEFAULT_THEME.planets, key)).toBe(DEFAULT_THEME.planets.default)
+      expect(pickRouteStyle(DEFAULT_THEME.routes, key)).toBe(DEFAULT_THEME.routes.default)
+    }
+  })
+})
+
+describe('resolving once', () => {
+  test('a theme resolveTheme returned comes back as is', () => {
+    const theme = resolveTheme({ background: '#000' })
+    expect(resolveTheme(theme)).toBe(theme)
+  })
+
+  test('anything else is merged into a fresh object every time', () => {
+    expect(resolveTheme()).not.toBe(resolveTheme())
+    expect(resolveTheme(DEFAULT_THEME)).not.toBe(DEFAULT_THEME)
+    expect(resolveTheme(DEFAULT_THEME)).toEqual(DEFAULT_THEME)
+  })
+
+  test('the new fields have defaults and can be overridden', () => {
+    expect(resolveTheme().ringed).toEqual(['gas', 'ice-giant'])
+    expect(resolveTheme({ ringed: ['shattered'] }).ringed).toEqual(['shattered'])
+    expect(resolveTheme({ light: '#eee' }).light).toBe('#eee')
+  })
+})

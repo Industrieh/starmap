@@ -205,8 +205,9 @@ export interface StarSystem {
   asteroidFields: AsteroidField[]
   gates: Gate[]
   /**
-   * Radius of the system's edge. Reaches past the outermost planet, gate and
-   * asteroid field. Computed if you do not provide it.
+   * Radius of the system's edge. When computed — you did not provide it — it is
+   * exactly how far the contents reach: the star, every planet and the stations
+   * around it, every gate, every asteroid field and its rocks. No margin.
    */
   outerLimit: number
   localRoutes: LocalRoute[]
@@ -272,3 +273,15 @@ export type GalaxyIndex = ReadonlyMap<string, IndexEntry>
 
 /** id → system. Built by `indexSystems()`. */
 export type SystemsById = ReadonlyMap<string, StarSystem>
+
+/**
+ * The hyperlane network, indexed for traversal. Built by `indexNetwork()`, and
+ * accepted in place of a `Galaxy` by `findRoute()`, `neighboursOf()`,
+ * `lanesOf()` and `connectedComponents()`.
+ */
+export interface HyperlaneNetwork {
+  /** id → system, in the galaxy's order. */
+  readonly systems: SystemsById
+  /** system id → every lane touching it, in the galaxy's order. */
+  readonly lanes: ReadonlyMap<string, readonly Hyperlane[]>
+}

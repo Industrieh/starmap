@@ -27,9 +27,13 @@ export interface DetailsProps {
   route?: RouteSummary
 }
 
-/** The panel itself: a scrolling column, in the right-hand grid track. */
+/**
+ * The panel itself: a scrolling column under the navigation panel, taking
+ * whatever height that one leaves (`flex-1`, and `min-h-0` so it can be
+ * smaller than its content and scroll).
+ */
 const PANEL =
-  'relative flex max-h-[40vh] flex-col gap-3.5 overflow-y-auto rounded-xl border border-line' +
+  'relative flex min-h-0 max-h-[40vh] flex-1 flex-col gap-3.5 overflow-y-auto rounded-xl border border-line' +
   ' bg-[linear-gradient(180deg,var(--color-panel-top),var(--color-panel)_140px)] p-4' +
   ' shadow-panel [scrollbar-color:var(--color-line)_transparent] [scrollbar-width:thin]' +
   ' wide:max-h-none'
@@ -63,7 +67,8 @@ export function Details({ index, id, route }: DetailsProps): JSX.Element {
           <span aria-hidden="true" className="mb-2.5 block text-[26px] text-accent opacity-50">
             ◎
           </span>
-          Click anything — a system, a star, a planet, a station, a gate, a belt.
+          Click anything — a system, a star, a planet, a station, a gate, a belt — or pick it in the
+          panel above.
         </p>
       </aside>
     )

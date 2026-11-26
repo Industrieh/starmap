@@ -3,7 +3,7 @@ import type { JSX } from 'react'
 import { CodeBlock } from '@/components/code-block'
 import { Callout } from '@/components/docs/callout'
 import { PropsTable } from '@/components/docs/props-table'
-import { A, C, H2, Lead, P, Quote } from '@/components/docs/prose'
+import { A, C, H2, H3, Lead, P, Quote } from '@/components/docs/prose'
 import type { TocEntry } from '@/content/registry'
 import { routes } from '@/lib/routes'
 
@@ -13,6 +13,7 @@ export const toc: readonly TocEntry[] = [
   { id: 'narrowing', title: 'Narrowing an entry', depth: 3 },
   { id: 'system-of', title: 'Finding the owner', depth: 2 },
   { id: 'neighbours', title: 'Neighbours and lanes', depth: 2 },
+  { id: 'network', title: 'The network index', depth: 3 },
   { id: 'routes', title: 'Pathfinding', depth: 2 },
   { id: 'cost', title: 'Length is a cost', depth: 3 },
   { id: 'connectivity', title: 'Connectivity', depth: 2 },
@@ -155,9 +156,30 @@ stationsOf(system).map((s) => s.name)         // ['High Anchorage']`}
         system is a thing you can create. <A href="#connectivity">Check for it.</A>
       </P>
 
+      <H3 id="network">The network index</H3>
+      <P>
+        Handed a galaxy, each network helper first indexes the hyperlanes — every system, and the
+        lanes that touch it. That is a pass over the whole network per call. When you ask often — a
+        neighbour list per frame, a route per ship — build that index once with{' '}
+        <C>indexNetwork()</C> and pass it instead: <C>lanesOf()</C>, <C>neighboursOf()</C>,{' '}
+        <C>findRoute()</C> and <C>connectedComponents()</C> all accept it in place of the galaxy.
+      </P>
+
+      <CodeBlock
+        lang="ts"
+        code={`import { findRoute, indexNetwork, neighboursOf } from '@industrieh/starmap'
+
+const network = indexNetwork(galaxy)   // once, right after createGalaxy()
+
+neighboursOf(network, 'b')             // same answers, no rescan
+findRoute(network, 'a', 'c')`}
+      />
+
       <H2 id="routes">Pathfinding</H2>
       <P>
-        <C>findRoute()</C> is Dijkstra over the hyperlane graph, weighted by <C>length</C>.
+        <C>findRoute()</C> is Dijkstra over the hyperlane graph, weighted by <C>length</C>, with a
+        binary heap: <C>O((V + E) log V)</C>. Among equally short routes, the one returned is always
+        the same — ties are broken by the systems&apos; order in the galaxy, never by chance.
       </P>
 
       <CodeBlock
@@ -212,9 +234,10 @@ findRoute(galaxy, 'x', 'y')
         not need a second graph.
       </P>
 
-      <Callout tone="note" title="The queue is naive on purpose">
-        The priority queue is a linear scan, which is fine up to a few thousand systems. Past that,
-        swap it for a binary heap — the graph is yours, and this function is forty lines.
+      <Callout tone="tip" title="Many routes? Index the network once">
+        Handed a galaxy, <C>findRoute()</C> rebuilds the graph before searching it. A game routing
+        every ship should build it once with <C>indexNetwork()</C> and pass that — the search itself
+        is the cheap part.
       </Callout>
 
       <H2 id="connectivity">Connectivity</H2>
@@ -271,14 +294,21 @@ if (parts.length > 1) {
             description: 'Re-indexes on every call. Convenience only.',
           },
           {
+            name: 'indexNetwork',
+            type: 'one pass over systems + lanes',
+            description:
+              'Every system and the lanes touching it. Build it once and hand it to the four calls below.',
+          },
+          {
             name: 'lanesOf',
-            type: 'one pass over lanes',
-            description: 'Filters the lane array.',
+            type: 'one pass over lanes · one lookup',
+            description: 'Filters the lane array — or, given the network, reads its entry.',
           },
           {
             name: 'neighboursOf',
-            type: 'one pass over systems + lanes',
-            description: 'Builds a system index internally on every call.',
+            type: 'indexes the network · one lookup',
+            description:
+              'Given a galaxy, indexes the network on every call. Given the network, cheap.',
           },
           {
             name: 'stationsOf',
@@ -287,12 +317,17 @@ if (parts.length > 1) {
           },
           {
             name: 'findRoute',
-            type: 'Dijkstra, linear-scan queue',
-            description: 'Fine to a few thousand systems. Not a per-frame call.',
+            type: 'Dijkstra, binary heap',
+            description: (
+              <>
+                <C>O((V + E) log V)</C>, plus indexing the network when handed a galaxy. Pass the
+                network when you route often.
+              </>
+            ),
           },
           {
             name: 'connectedComponents',
-            type: 'one breadth-first sweep',
+            type: 'one sweep of the network',
             description: 'A build-time or load-time check, not a runtime one.',
           },
         ]}

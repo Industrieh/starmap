@@ -3,12 +3,12 @@
  *
  * Run by `.github/workflows/release.yml` once the whole check suite is green.
  * It is deliberately a script rather than `changeset publish`, for one reason:
- * this repo declares internal dependencies with the `workspace:*` protocol, and
+ * this repo declares internal dependencies with the `workspace:` protocol, and
  * `npm publish` ships that string **as is** — a published tarball asking for a
  * version range npm cannot resolve. `bun publish` rewrites it to the real
  * version at pack time, so Bun is what publishes here.
  *
- * Three things it does on top of calling `bun publish`:
+ * Four things it does on top of calling `bun publish`:
  *
  * 1. **It picks the dist-tag from the version.** A version carrying a
  *    prerelease identifier (`0.1.0-beta.0`) is published under that identifier
@@ -19,6 +19,11 @@
  *    would fail halfway. Skipping makes the workflow re-runnable.
  * 3. **It refuses to publish a dirty version.** `0.0.0` means "never
  *    released" — `changeset version` has not run.
+ * 4. **It publishes a package before the packages that depend on it.** If the
+ *    run dies halfway, the registry then holds a new `starmap` with no matching
+ *    `starmap-render` yet — harmless — rather than a `starmap-render` asking for
+ *    a `starmap` that does not exist, which nobody can install until the
+ *    release is re-run.
  *
  * ```bash
  * bun run release:dry-run    # says what it would do, publishes nothing
@@ -41,6 +46,30 @@ interface Manifest {
   version: string
   private?: boolean
   dependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+}
+
+/**
+ * The dependency fields an installed package is resolved from. Each of them can
+ * name a sibling package, and each of them goes through the `workspace:`
+ * rewrite. `devDependencies` are left out: npm never installs them for a user.
+ */
+const RUNTIME_DEPENDENCY_FIELDS = [
+  'dependencies',
+  'peerDependencies',
+  'optionalDependencies',
+] as const satisfies readonly (keyof Manifest)[]
+
+/** Every runtime dependency of a manifest, as `[field, name, range]`. */
+function runtimeDependencies(manifest: Manifest): [field: string, name: string, range: string][] {
+  return RUNTIME_DEPENDENCY_FIELDS.flatMap((field) =>
+    Object.entries(manifest[field] ?? {}).map(([name, range]): [string, string, string] => [
+      field,
+      name,
+      range,
+    ]),
+  )
 }
 
 /**
@@ -100,17 +129,22 @@ function packedManifest(dir: string): Manifest {
  * is not the one being released.
  *
  * The case this exists for: `bun.lock` still holds the versions from before
- * `changeset version` ran, so Bun rewrites `workspace:*` to a stale — often
- * never-published — version. Nothing else catches it. `bun install
+ * `changeset version` ran, so Bun rewrites a `workspace:` range to a stale —
+ * often never-published — version. Nothing else catches it. `bun install
  * --frozen-lockfile` is happy, the build is happy, the tests are happy, and the
  * package lands on npm impossible to install. See `scripts/relock.ts`.
+ *
+ * Every runtime dependency field is checked, not just `dependencies`: a sibling
+ * moved to `peerDependencies` goes through the same rewrite, and can go stale
+ * the same way. `workspace:^` becomes `^1.2.3`, so a leading `^` or `~` is
+ * accepted as long as the version behind it is the one being released.
  */
 function verifyInternalDeps(packed: Manifest, releasing: Map<string, string>): string[] {
   const problems: string[] = []
 
-  for (const [dep, range] of Object.entries(packed.dependencies ?? {})) {
+  for (const [field, dep, range] of runtimeDependencies(packed)) {
     if (range.startsWith('workspace:')) {
-      problems.push(`depends on ${dep}@${range} — the workspace protocol survived packing`)
+      problems.push(`${field}: ${dep}@${range} — the workspace protocol survived packing`)
       continue
     }
 
@@ -119,13 +153,46 @@ function verifyInternalDeps(packed: Manifest, releasing: Map<string, string>): s
 
     if (range.replace(/^[\^~]/, '') !== expected) {
       problems.push(
-        `depends on ${dep}@${range}, but this release builds ${dep}@${expected}` +
+        `${field}: ${dep}@${range}, but this release builds ${dep}@${expected}` +
           ' — bun.lock is stale, run `bun run changeset:version`',
       )
     }
   }
 
   return problems
+}
+
+/**
+ * Orders packages so that each one comes after the siblings it depends on, in
+ * any runtime dependency field.
+ *
+ * Names are sorted first, so the order never depends on how the file system
+ * happens to list `packages/` — `readdirSync` makes no promise about it.
+ */
+function dependencyOrder<T extends { manifest: Manifest }>(entries: readonly T[]): T[] {
+  const byName = new Map(entries.map((entry) => [entry.manifest.name, entry]))
+  const state = new Map<string, 'visiting' | 'done'>()
+  const ordered: T[] = []
+
+  const visit = (entry: T, trail: readonly string[]): void => {
+    const { name } = entry.manifest
+    if (state.get(name) === 'done') return
+    if (state.get(name) === 'visiting') {
+      throw new Error(`dependency cycle between packages: ${[...trail, name].join(' → ')}`)
+    }
+
+    state.set(name, 'visiting')
+    for (const [, dep] of runtimeDependencies(entry.manifest)) {
+      const sibling = byName.get(dep)
+      if (sibling !== undefined) visit(sibling, [...trail, name])
+    }
+    state.set(name, 'done')
+    ordered.push(entry)
+  }
+
+  const byNameOrder = entries.toSorted((a, b) => a.manifest.name.localeCompare(b.manifest.name))
+  for (const entry of byNameOrder) visit(entry, [])
+  return ordered
 }
 
 function publishablePackages(): { dir: string; manifest: Manifest }[] {
@@ -145,7 +212,9 @@ function publishablePackages(): { dir: string; manifest: Manifest }[] {
     })
 }
 
-const packages = publishablePackages()
+// In dependency order from the start: the plan below keeps this order, and the
+// plan is what gets published.
+const packages = dependencyOrder(publishablePackages())
 if (packages.length === 0) {
   console.error('✗ no publishable package found in packages/')
   process.exit(1)

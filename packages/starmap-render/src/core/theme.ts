@@ -80,6 +80,20 @@ export interface Theme {
   field: string
   /** The rocks of an asteroid field. */
   rock: string
+  /**
+   * The white of the drawing's light: the core of a star, the lit side of a
+   * planet, the centre of a system's glow on the galaxy map. On a light
+   * background, a softer value keeps stars from washing out.
+   */
+  light: string
+  /** The dark side of a planet. */
+  shade: string
+  /**
+   * Planet types drawn with a ring, for planets with three moons or more —
+   * `moons` standing in for size, since moons are never drawn. Your types are
+   * yours: list them here. A theme that sets it replaces the list whole.
+   */
+  ringed: readonly string[]
   /** By `star.class`. */
   stars: ColorMap
   /** By `planet.type`. */
@@ -107,6 +121,9 @@ export interface ThemeInput {
   gateUnstable?: string
   field?: string
   rock?: string
+  light?: string
+  shade?: string
+  ringed?: readonly string[]
   stars?: Readonly<Record<string, string>>
   planets?: Readonly<Record<string, string>>
   stations?: Readonly<Record<string, string>>
@@ -135,6 +152,9 @@ export const DEFAULT_THEME: Theme = {
   gateUnstable: '#ff6b81',
   field: '#6b5a2a',
   rock: '#a89468',
+  light: '#ffffff',
+  shade: '#000000',
+  ringed: ['gas', 'ice-giant'],
   stars: {
     O: '#9bb0ff',
     B: '#aabfff',
@@ -184,6 +204,9 @@ export const DEFAULT_THEME: Theme = {
   },
 }
 
+/** Themes this module resolved, recognised so that they are never merged twice. */
+const RESOLVED = new WeakSet<object>()
+
 /**
  * Fill a {@link ThemeInput} in from {@link DEFAULT_THEME}.
  *
@@ -191,11 +214,13 @@ export const DEFAULT_THEME: Theme = {
  * every other planet colour. Nothing is merged deeper than that: a `RouteStyle`
  * is replaced whole, because a dash pattern without its width is not a style.
  *
- * Cheap, but not free. Resolve once and pass the result if you render every
- * frame.
+ * A theme this function returned is recognised and handed back as is — so
+ * resolving once and passing the result to every frame skips the merge
+ * entirely. Treat it as read-only: it is the very object the next frame uses.
  */
 export function resolveTheme(input: ThemeInput = {}): Theme {
-  return {
+  if (RESOLVED.has(input)) return input as Theme
+  const theme: Theme = {
     ...DEFAULT_THEME,
     ...stripUndefined(input),
     stars: { ...DEFAULT_THEME.stars, ...input.stars },
@@ -204,16 +229,24 @@ export function resolveTheme(input: ThemeInput = {}): Theme {
     factions: { ...DEFAULT_THEME.factions, ...input.factions },
     routes: { ...DEFAULT_THEME.routes, ...input.routes },
   }
+  RESOLVED.add(theme)
+  return theme
 }
 
-/** Colour for a key, falling back to the table's `default`. */
+/**
+ * Colour for a key, falling back to the table's `default`.
+ *
+ * Only the table's own keys count. The vocabularies are open, so a planet type
+ * may well be `'constructor'` or `'toString'` — which must fall back like any
+ * unknown key, not return what `Object.prototype` happens to hold.
+ */
 export function pickColor(table: ColorMap, key: string | undefined): string {
-  return (key === undefined ? undefined : table[key]) ?? table.default
+  return (key !== undefined && Object.hasOwn(table, key) ? table[key] : undefined) ?? table.default
 }
 
-/** Style for a route type, falling back to the table's `default`. */
+/** Style for a route type, falling back to the table's `default`. Own keys only, as {@link pickColor}. */
 export function pickRouteStyle(table: RouteStyleMap, key: string | undefined): RouteStyle {
-  return (key === undefined ? undefined : table[key]) ?? table.default
+  return (key !== undefined && Object.hasOwn(table, key) ? table[key] : undefined) ?? table.default
 }
 
 // ---------------------------------------------------------------- internals

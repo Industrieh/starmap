@@ -1,0 +1,21 @@
+# Keeps the GitHub Actions of `.github/workflows/` up to date.
+#
+# Every action there is pinned to a full commit SHA, with its version in a
+# comment: a tag can be moved to point at other code, a commit cannot. The price
+# of pinning is that nothing updates by itself any more, and this file pays it.
+# Dependabot reads the `@<sha> # vX.Y.Z` form and bumps the SHA and the comment
+# together, in a single weekly pull request.
+#
+# Actions only. The npm dependencies follow `bun.lock`, which is a decision of
+# its own (see `scripts/relock.ts`).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']
+    commit-message:
+      prefix: chore(ci)

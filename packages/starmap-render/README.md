@@ -48,14 +48,10 @@ the core.
 bun add @industrieh/starmap @industrieh/starmap-render
 ```
 
-Not on npm yet. Until then, install it from a path or from git:
-
-```bash
-bun add @industrieh/starmap-render@file:../starmap/packages/starmap-render
-```
-
-The core is a real dependency, not a peer one, and it is never bundled in — your
-application ends up with one copy of it.
+The core is a real dependency, declared as a caret range and never bundled in —
+as long as your own `@industrieh/starmap` is compatible, your application ends
+up with one copy of it. Like the core, it runs on Node 18 and later, Bun, Deno,
+browsers and workers.
 
 ## What it does
 
@@ -96,21 +92,24 @@ What ends up in the drawing, back to front: the background, a field of
 decorative stars, orbit circles, asteroid fields, local routes, the star,
 planets with their stations, then gates.
 
-| option            | default     | what it does                                           |
-| ----------------- | ----------- | ------------------------------------------------------ |
-| `t`               | `0`         | simulation time, in seconds                            |
-| `theme`           | dark        | colours, merged over the default                       |
-| `margin`          | `0.45`      | space around the system, as a fraction of `outerLimit` |
-| `labels`          | `true`      | draw names                                             |
-| `backdrop`        | `260`       | how many background stars; `0` for none                |
-| `idPrefix`        | `'starmap'` | prefix of the gradient ids — see below                 |
-| `systems`         | —           | `indexSystems(galaxy)`, to name gate destinations      |
-| `width`, `height` | —           | pixel size attributes                                  |
-| `title`           | —           | accessible name                                        |
+| option            | default              | what it does                                            |
+| ----------------- | -------------------- | ------------------------------------------------------- |
+| `t`               | `0`                  | simulation time, in seconds                             |
+| `theme`           | dark                 | colours, merged over the default                        |
+| `margin`          | `0.45`               | space around the system, as a fraction of `outerLimit`  |
+| `labels`          | `true`               | draw names                                              |
+| `backdrop`        | `260`                | how many background stars; `0` for none                 |
+| `idPrefix`        | `starmap-<systemId>` | prefix of the gradient ids — see below                  |
+| `systems`         | —                    | `indexSystems(galaxy)`, to name gate destinations       |
+| `layers`          | all                  | draw only these layers — see [drawing](docs/drawing.md) |
+| `width`, `height` | —                    | pixel size attributes                                   |
+| `title`           | —                    | accessible name                                         |
+| `role`            | `img` with a title   | the root's role; `false` for an interactive drawing     |
 
-**Two drawings on one page need two `idPrefix` values.** A page shares one id
-namespace, so two systems drawn with the same prefix would both use the first
-one's star colour. The system's own id makes a good prefix.
+**Several systems on one page just work.** A page shares one id namespace, and
+the gradients carry the star's colour, so their ids are prefixed with the
+system's id by default. Pass `idPrefix` only to draw the same system twice with
+two themes. Characters an XML id cannot hold become `_`.
 
 ## Draw a galaxy
 
@@ -132,15 +131,16 @@ consecutive entries.
 Nothing moves here, so there is no `t`. At galaxy scale a planet is smaller than
 a rounding error.
 
-| option                     | default     | what it does                            |
-| -------------------------- | ----------- | --------------------------------------- |
-| `theme`                    | dark        | colours, merged over the default        |
-| `margin`                   | `0.12`      | space around the systems                |
-| `labels`                   | `true`      | draw system names                       |
-| `backdrop`                 | `400`       | how many background stars; `0` for none |
-| `idPrefix`                 | `'starmap'` | prefix of the gradient id               |
-| `highlight`                | —           | a path to bring forward                 |
-| `width`, `height`, `title` | —           | same as above                           |
+| option                             | default     | what it does                            |
+| ---------------------------------- | ----------- | --------------------------------------- |
+| `theme`                            | dark        | colours, merged over the default        |
+| `margin`                           | `0.12`      | space around the systems                |
+| `labels`                           | `true`      | draw system names                       |
+| `backdrop`                         | `400`       | how many background stars; `0` for none |
+| `idPrefix`                         | `'starmap'` | prefix of the gradient id               |
+| `highlight`                        | —           | a path to bring forward                 |
+| `layers`                           | all         | draw only these layers                  |
+| `width`, `height`, `title`, `role` | —           | same as above                           |
 
 ## Use the output
 
@@ -175,9 +175,9 @@ const frame = (): void => {
 ```
 
 Rebuilding the whole string every frame is fine for a preview and wasteful for a
-real map. When you get there, draw the layers once with `renderSystemContent()`
-and move the objects yourself with `systemPositions()` from the core — the
-`data-id` attributes are there for exactly that. See
+real map: only the `routes` and `planets` layers depend on `t`. When you get
+there, draw the other layers once and redraw just those two with
+`renderSystemContent(system, { t, layers: ['routes', 'planets'] })`. See
 [docs/recipes.md](docs/recipes.md).
 
 ## Theme it
@@ -210,17 +210,22 @@ Every object is drawn in a group that says what it is and which object it is:
 ```
 
 One listener on the container is enough — no per-object handlers, and the markup
-can be replaced wholesale on the next frame:
+can be replaced wholesale on the next frame. Listen to `pointerdown` if it is
+replaced every frame: a `click` needs the press and the release on the same
+element, and a redraw in between swallows it.
 
 ```ts
-container.addEventListener('click', (event) => {
+container.addEventListener('pointerdown', (event) => {
   const node = (event.target as Element).closest('[data-id]')
   if (node) select(node.getAttribute('data-id'))
 })
 ```
 
-Layers carry `data-layer` (`backdrop`, `orbits`, `fields`, `routes`, `planets`,
-`gates`, `lanes`, `systems`), which is what you style or hide from CSS.
+Hyperlanes and local routes say what they are too: `data-kind="lane"` and
+`data-kind="route"`. Layers carry `data-layer` (`backdrop`, `orbits`, `fields`,
+`routes`, `star`, `planets`, `gates`, `lanes`, `systems`), which is what you
+style or hide from CSS. An interactive drawing should pass `role: false`, so
+that `role="img"` does not hide its objects from assistive technology.
 
 For pan and zoom, take the layers without the document around them and own the
 `viewBox` yourself:
@@ -244,6 +249,7 @@ svgElement.innerHTML = renderSystemContent(system, { t })
 | `renderGalaxy(galaxy, options?)`     | the network, as a full SVG document  |
 | `renderGalaxyContent(galaxy, opts?)` | the same layers, without the `<svg>` |
 | `svgDocument(view, body, options?)`  | wrap your own layers in a document   |
+| `SYSTEM_LAYERS`, `GALAXY_LAYERS`     | every layer name, bottom to top      |
 
 ### Framing and shapes
 
@@ -254,15 +260,16 @@ svgElement.innerHTML = renderSystemContent(system, { t })
 | `viewBoxAttr(view)`                          | that box, as the attribute string  |
 | `arcPath(r, startDeg, sweepDeg)`             | the `d` of an arc — asteroid belts |
 | `backdropStars(count, radius, seed, scale?)` | a deterministic field of dots      |
+| `systemScale(view)`, `galaxyScale(view)`     | the size units a drawing uses      |
 
 ### Theme
 
-| export                       | what it is                               |
-| ---------------------------- | ---------------------------------------- |
-| `DEFAULT_THEME`              | the dark theme, complete                 |
-| `resolveTheme(input?)`       | fill a partial theme in from the default |
-| `pickColor(table, key)`      | a colour, falling back to `default`      |
-| `pickRouteStyle(table, key)` | a route style, same rule                 |
+| export                       | what it is                                                                  |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| `DEFAULT_THEME`              | the dark theme, complete                                                    |
+| `resolveTheme(input?)`       | fill a partial theme in from the default — a resolved one is returned as is |
+| `pickColor(table, key)`      | a colour, falling back to `default`                                         |
+| `pickRouteStyle(table, key)` | a route style, same rule                                                    |
 
 ### SVG string building blocks
 
@@ -348,7 +355,7 @@ packages/starmap-render/
       root.ts           the <svg> element
       system.ts         renderSystem()
       galaxy.ts         renderGalaxy()
-  tests/                svg, theme, geometry, system, galaxy, purity
+  tests/                svg, theme, geometry, system, galaxy, snapshots, purity
   docs/                 theming, drawing, recipes, architecture
 ```
 

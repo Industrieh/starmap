@@ -47,6 +47,7 @@ export const toc: readonly TocEntry[] = [
   { id: 'why', title: 'Why colour lives here', depth: 2 },
   { id: 'merging', title: 'How a theme merges', depth: 2 },
   { id: 'flat', title: 'The flat colours', depth: 2 },
+  { id: 'ringed', title: 'Which planets wear a ring', depth: 3 },
   { id: 'tables', title: 'The keyed tables', depth: 2 },
   { id: 'default-entry', title: 'Every table needs a default', depth: 3 },
   { id: 'routes', title: 'Route styles', depth: 3 },
@@ -104,9 +105,14 @@ export default function Content(): JSX.Element {
       />
 
       <RenderCompare
-        left={{ svg: DARK_SVG, label: <>The default theme, untouched.</> }}
+        left={{
+          svg: DARK_SVG,
+          alt: 'The Sol system in the default dark theme.',
+          label: <>The default theme, untouched.</>,
+        }}
         right={{
           svg: ONE_COLOUR,
+          alt: 'The same system with one colour changed: Vesper, the terran planet, is pink.',
           label: (
             <>
               One key changed — <C>{`{ planets: { terran: '#f472b6' } }`}</C>. Vesper is pink;
@@ -129,7 +135,7 @@ export default function Content(): JSX.Element {
       </Callout>
 
       <H2 id="flat">The flat colours</H2>
-      <P>Thirteen single values. Every one of them is a string, passed straight into SVG.</P>
+      <P>Fifteen single values. Every one of them is a string, passed straight into SVG.</P>
 
       <PropsTable
         rows={[
@@ -214,7 +220,40 @@ export default function Content(): JSX.Element {
             defaultValue: '#a89468',
             description: 'The rocks inside a field.',
           },
+          {
+            name: 'light',
+            type: 'string',
+            defaultValue: '#ffffff',
+            description: (
+              <>
+                The light of the drawing: the core of a star, the lit side of a planet, the centre
+                of a system&apos;s glow on the galaxy map. On a light background, a softer value
+                keeps stars from washing out.
+              </>
+            ),
+          },
+          {
+            name: 'shade',
+            type: 'string',
+            defaultValue: '#000000',
+            description: 'The dark side of a planet.',
+          },
         ]}
+      />
+
+      <H3 id="ringed">Which planets wear a ring</H3>
+      <P>
+        One value in the theme is not a colour: <C>ringed</C>, the planet types drawn with a ring —
+        for a planet with three <C>moons</C> or more, <C>moons</C> standing in for size, since moons
+        are never drawn. Your own types belong here as much as the core&apos;s suggestions do, and
+        the list you pass replaces the default whole.
+      </P>
+
+      <CodeBlock
+        lang="ts"
+        code={`DEFAULT_THEME.ringed                                 // ['gas', 'ice-giant']
+
+renderSystem(system, { theme: { ringed: ['gas', 'ice-giant', 'gas-dwarf'] } })`}
       />
 
       <H2 id="tables">The keyed tables</H2>
@@ -265,14 +304,17 @@ factions: {       // by faction.id — drawn as the ring around a system
 
 const theme = resolveTheme({ planets: { terran: '#7ee787' } })
 
-pickColor(theme.planets, 'terran')      // '#7ee787'
-pickColor(theme.planets, 'shattered')   // '#8b8377' — the default
-pickColor(theme.planets, undefined)     // '#8b8377' — the default too`}
+pickColor(theme.planets, 'terran')        // '#7ee787'
+pickColor(theme.planets, 'shattered')     // '#8b8377' — the default
+pickColor(theme.planets, undefined)       // '#8b8377' — the default too
+pickColor(theme.planets, 'constructor')   // '#8b8377' — own keys only`}
       />
 
       <P>
         <C>default</C> is required by the type, so a table you build by hand cannot forget it. That
-        is what guarantees a drawing is never missing a colour.
+        is what guarantees a drawing is never missing a colour. And only a table&apos;s own keys
+        count: a type you happened to call <C>constructor</C> or <C>toString</C> gets the default,
+        not something inherited from <C>Object.prototype</C>.
       </P>
 
       <H3 id="routes">Route styles</H3>
@@ -292,6 +334,13 @@ pickColor(theme.planets, undefined)     // '#8b8377' — the default too`}
   default:     { stroke: '#5f7fa8', dash: '6 8',  width: 1.1 },
 }`}
       />
+
+      <P>
+        <C>dash</C> is a <C>stroke-dasharray</C> value, in that syntax: lengths separated by spaces
+        and/or commas — <C>&apos;6 8&apos;</C>, <C>&apos;6,8&apos;</C> and <C>&apos;6, 8&apos;</C>{' '}
+        are the same pattern. An empty string, <C>&apos;none&apos;</C>, or anything that does not
+        read as numbers draws a solid line.
+      </P>
 
       <Callout tone="tip" title="The dash patterns are an accessibility decision">
         Each route type gets a <em>distinct</em> pattern, not just a distinct colour — so the map
@@ -331,10 +380,15 @@ renderSystem(system, { theme: LIGHT })`}
       />
 
       <RenderCompare
-        left={{ svg: DARK_SVG, label: <>The default, dark.</> }}
+        left={{
+          svg: DARK_SVG,
+          alt: 'The Sol system in the default dark theme.',
+          label: <>The default, dark.</>,
+        }}
         right={{
           svg: LIGHT_SVG,
-          label: <>The theme above. Same system, same t — thirteen values and one table.</>,
+          alt: 'The same system in the light theme above: a pale background, grey stars, dark labels.',
+          label: <>The theme above. Same system, same t — twelve values and one table.</>,
         }}
       />
 
@@ -347,6 +401,7 @@ renderSystem(system, { theme: LIGHT })`}
       <RenderCompare
         left={{
           svg: NO_BACKDROP_FIX,
+          alt: 'The Sol system on a pale background with the default pale-blue backdrop stars, which are barely visible.',
           label: (
             <>
               <strong>The trap.</strong> Background, label and orbit changed — <C>backdropStar</C>{' '}
@@ -356,6 +411,7 @@ renderSystem(system, { theme: LIGHT })`}
         }}
         right={{
           svg: LIGHT_SVG,
+          alt: 'The same system in the full light theme, its grey backdrop stars clearly visible.',
           label: (
             <>
               <strong>Fixed.</strong> One more line, <C>backdropStar: &apos;#94a3b8&apos;</C>, and
@@ -368,7 +424,8 @@ renderSystem(system, { theme: LIGHT })`}
       <H2 id="resolve">Resolving once</H2>
       <P>
         <C>resolveTheme()</C> is cheap but not free — it builds five merged tables. If you render
-        every frame, resolve once outside the loop.
+        every frame, resolve once outside the loop and pass the result: a theme{' '}
+        <C>resolveTheme()</C> returned is recognised and used as is, so no frame merges anything.
       </P>
 
       <CodeBlock
@@ -378,7 +435,7 @@ renderSystem(system, { theme: LIGHT })`}
 // Once.
 const theme = resolveTheme(LIGHT)
 
-// Then per frame — a resolved Theme is a valid ThemeInput, so it just passes through.
+// Then per frame — recognised as already resolved, so it is used as is, with no merge.
 function frame(t: number) {
   container.innerHTML = renderSystemContent(system, { t, theme })
 }`}

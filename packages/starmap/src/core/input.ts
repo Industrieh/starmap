@@ -82,7 +82,8 @@ export interface SystemInput {
   gates?: GateInput[]
   /**
    * Radius of the system's edge. Defaults to the reach of its own contents —
-   * star, planets, gates, asteroid fields — with no margin added.
+   * the star, the planets and their stations, the gates, the asteroid fields and
+   * their rocks — with no margin added.
    */
   outerLimit?: number
   localRoutes?: LocalRouteInput[]
@@ -189,7 +190,11 @@ export interface LocalRouteInput {
 }
 
 export interface LaneInput {
-  /** Defaults to `lane-<from>-<to>`. */
+  /**
+   * Defaults to `lane-<from>-<to>`. Ids containing dashes can make two lanes
+   * derive the same one — `a` → `b-c` and `a-b` → `c` both give `lane-a-b-c`.
+   * Validation reports the duplicate; an explicit id settles it.
+   */
   id?: string
   /** System ids. Undirected: the order does not matter. */
   from: string

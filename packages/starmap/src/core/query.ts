@@ -5,13 +5,17 @@
  * awkward to query, so these helpers build the lookups a game needs constantly.
  *
  * Build an index **once** after {@link createGalaxy} and keep it around: each
- * call walks the whole universe.
+ * call that is handed a whole `Galaxy` walks the whole universe. The network
+ * helpers — {@link neighboursOf}, {@link connectedComponents}, {@link findRoute}
+ * — all accept the result of {@link indexNetwork} in place of the galaxy for
+ * that reason.
  */
 
 import type {
   Galaxy,
   GalaxyIndex,
   Hyperlane,
+  HyperlaneNetwork,
   IndexEntry,
   StarSystem,
   Station,
@@ -52,9 +56,36 @@ export function indexGalaxy(galaxy: Galaxy): GalaxyIndex {
   return m
 }
 
+/**
+ * Index the hyperlane network for traversal: every system, and the lanes that
+ * touch each one, both in the galaxy's order.
+ *
+ * Every network helper builds this on its own when handed a `Galaxy`. Build it
+ * once and pass it instead when you query the network often — a route per ship,
+ * a neighbour list per frame.
+ *
+ * @example
+ * ```ts
+ * const network = indexNetwork(galaxy)   // once, after createGalaxy()
+ * findRoute(network, 'sol', 'vega')      // no rescan of the galaxy
+ * neighboursOf(network, 'sol')
+ * ```
+ */
+export function indexNetwork(galaxy: Galaxy): HyperlaneNetwork {
+  const systems = indexSystems(galaxy)
+  const lanes = new Map<string, Hyperlane[]>()
+  for (const id of systems.keys()) lanes.set(id, [])
+  for (const lane of galaxy.lanes) {
+    lanes.get(lane.from)?.push(lane)
+    if (lane.to !== lane.from) lanes.get(lane.to)?.push(lane)
+  }
+  return { systems, lanes }
+}
+
 /** Every hyperlane that touches a system. */
-export function lanesOf(galaxy: Galaxy, systemId: string): Hyperlane[] {
-  return galaxy.lanes.filter((l) => l.from === systemId || l.to === systemId)
+export function lanesOf(source: Galaxy | HyperlaneNetwork, systemId: string): Hyperlane[] {
+  if (!isGalaxy(source)) return [...(source.lanes.get(systemId) ?? [])]
+  return source.lanes.filter((l) => l.from === systemId || l.to === systemId)
 }
 
 /**
@@ -63,10 +94,10 @@ export function lanesOf(galaxy: Galaxy, systemId: string): Hyperlane[] {
  * There is no guarantee that there are any — your hyperlane network decides.
  * Use {@link connectedComponents} to check that no system is stranded.
  */
-export function neighboursOf(galaxy: Galaxy, systemId: string): StarSystem[] {
-  const byId = indexSystems(galaxy)
-  return lanesOf(galaxy, systemId)
-    .map((l) => byId.get(l.from === systemId ? l.to : l.from))
+export function neighboursOf(source: Galaxy | HyperlaneNetwork, systemId: string): StarSystem[] {
+  const network = isGalaxy(source) ? indexNetwork(source) : source
+  return (network.lanes.get(systemId) ?? [])
+    .map((l) => network.systems.get(l.from === systemId ? l.to : l.from))
     .filter((s) => s !== undefined)
 }
 
@@ -88,32 +119,33 @@ export function neighboursOf(galaxy: Galaxy, systemId: string): StarSystem[] {
  * }
  * ```
  */
-export function connectedComponents(galaxy: Galaxy): string[][] {
-  const adjacency = new Map<string, string[]>(galaxy.systems.map((s) => [s.id, []]))
-  for (const l of galaxy.lanes) {
-    adjacency.get(l.from)?.push(l.to)
-    adjacency.get(l.to)?.push(l.from)
-  }
-
+export function connectedComponents(source: Galaxy | HyperlaneNetwork): string[][] {
+  const network = isGalaxy(source) ? indexNetwork(source) : source
   const seen = new Set<string>()
   const components: string[][] = []
-  for (const system of galaxy.systems) {
-    if (seen.has(system.id)) continue
+  for (const start of network.systems.keys()) {
+    if (seen.has(start)) continue
     const group: string[] = []
-    const queue = [system.id]
-    seen.add(system.id)
-    while (queue.length) {
-      const id = queue.pop() as string
+    const stack = [start]
+    seen.add(start)
+    while (stack.length) {
+      const id = stack.pop() as string
       group.push(id)
-      for (const next of adjacency.get(id) ?? []) {
-        if (seen.has(next)) continue
+      for (const lane of network.lanes.get(id) ?? []) {
+        const next = lane.from === id ? lane.to : lane.from
+        // A lane to a system that does not exist leads nowhere.
+        if (seen.has(next) || !network.systems.has(next)) continue
         seen.add(next)
-        queue.push(next)
+        stack.push(next)
       }
     }
     components.push(group)
   }
-  return components.toSorted((a, b) => b.length - a.length)
+  // `sort` is stable, so components of equal size keep the galaxy's order. It
+  // sorts an array built just above, in place; `toSorted()` would copy it for
+  // nothing, and Node 18 — which `engines` promises — does not have it.
+  // oxlint-disable-next-line unicorn/no-array-sort
+  return components.sort((a, b) => b.length - a.length)
 }
 
 /** Every station in a system, across all its planets. */
@@ -154,11 +186,12 @@ export function systemOf(source: Galaxy | GalaxyIndex, id: string): StarSystem |
 }
 
 /**
- * Tells the two accepted sources apart. `instanceof Map` would be the obvious
- * test and the wrong one: it fails on a map built in another realm — a worker,
- * an iframe.
+ * Tells a `Galaxy` apart from the indexes accepted in its place. `instanceof
+ * Map` would be the obvious test and the wrong one: it fails on a map built in
+ * another realm — a worker, an iframe. A galaxy is the only one of them whose
+ * `systems` is an array.
  */
-function isGalaxy(source: Galaxy | GalaxyIndex): source is Galaxy {
+function isGalaxy<T extends object>(source: Galaxy | T): source is Galaxy {
   return Array.isArray((source as Galaxy).systems)
 }
 
@@ -175,9 +208,12 @@ export interface Route {
 /**
  * Shortest path between two systems, weighted by hyperlane length.
  *
- * Dijkstra with a naive priority queue (a linear scan). Fine up to a few
- * thousand systems. Past that, index the graph once and swap the queue for a
- * binary heap.
+ * Dijkstra with a binary heap: O((V + E) log V). Among equally short routes,
+ * the one found is always the same — ties are broken by the systems' order in
+ * the galaxy, never by chance.
+ *
+ * Handed a `Galaxy`, it indexes the network first. When you look for many
+ * routes, build that index once with {@link indexNetwork} and pass it instead.
  *
  * @returns `null` if either system does not exist, or if no path links them —
  * your network can be split, see {@link connectedComponents}.
@@ -189,44 +225,42 @@ export interface Route {
  * route?.systemIds  // ['sol', 'proxima', …, 'alpha']
  * ```
  */
-export function findRoute(galaxy: Galaxy, fromId: string, toId: string): Route | null {
-  const byId = indexSystems(galaxy)
-  if (!byId.has(fromId) || !byId.has(toId)) return null
+export function findRoute(
+  source: Galaxy | HyperlaneNetwork,
+  fromId: string,
+  toId: string,
+): Route | null {
+  const network = isGalaxy(source) ? indexNetwork(source) : source
+  if (!network.systems.has(fromId) || !network.systems.has(toId)) return null
   if (fromId === toId) return { systemIds: [fromId], distance: 0, jumps: 0 }
 
-  // Adjacency list: id -> [(neighbour, length)]
-  const adj = new Map<string, { to: string; len: number }[]>()
-  for (const id of byId.keys()) adj.set(id, [])
-  for (const l of galaxy.lanes) {
-    adj.get(l.from)?.push({ to: l.to, len: l.length })
-    adj.get(l.to)?.push({ to: l.from, len: l.length })
-  }
+  // Each system's rank in the galaxy, the tie-breaker of the queue.
+  const rank = new Map<string, number>()
+  for (const id of network.systems.keys()) rank.set(id, rank.size)
 
   const dist = new Map<string, number>([[fromId, 0]])
   const prev = new Map<string, string>()
-  const pending = new Set(byId.keys())
+  const done = new Set<string>()
+  const queue: QueueItem[] = []
+  push(queue, [0, rank.get(fromId) as number, fromId])
 
-  while (pending.size) {
-    let current: string | null = null
-    let best = Infinity
-    for (const id of pending) {
-      const d = dist.get(id) ?? Infinity
-      if (d < best) {
-        best = d
-        current = id
-      }
-    }
-    // Only unreachable systems are left: the graph is split.
-    if (current === null) break
+  while (queue.length) {
+    const [best, , current] = pop(queue)
+    // A system can be queued several times, once per improvement: only its
+    // first, shortest, entry counts.
+    if (done.has(current)) continue
     if (current === toId) break
-    pending.delete(current)
+    done.add(current)
 
-    for (const edge of adj.get(current) ?? []) {
-      if (!pending.has(edge.to)) continue
-      const d = best + edge.len
-      if (d < (dist.get(edge.to) ?? Infinity)) {
-        dist.set(edge.to, d)
-        prev.set(edge.to, current)
+    for (const lane of network.lanes.get(current) ?? []) {
+      const next = lane.from === current ? lane.to : lane.from
+      const nextRank = rank.get(next)
+      if (nextRank === undefined || done.has(next)) continue
+      const d = best + lane.length
+      if (d < (dist.get(next) ?? Infinity)) {
+        dist.set(next, d)
+        prev.set(next, current)
+        push(queue, [d, nextRank, next])
       }
     }
   }
@@ -237,7 +271,50 @@ export function findRoute(galaxy: Galaxy, fromId: string, toId: string): Route |
   const systemIds = [toId]
   for (let id = toId; prev.has(id);) {
     id = prev.get(id) as string
-    systemIds.unshift(id)
+    systemIds.push(id)
   }
+  systemIds.reverse()
   return { systemIds, distance, jumps: systemIds.length - 1 }
+}
+
+// ------------------------------------------------------- the priority queue
+
+/** `[distance, rank, id]`: ordered by distance, then by rank. */
+type QueueItem = [distance: number, rank: number, id: string]
+
+const before = (a: QueueItem, b: QueueItem): boolean =>
+  a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])
+
+function push(heap: QueueItem[], item: QueueItem): void {
+  heap.push(item)
+  let i = heap.length - 1
+  while (i > 0) {
+    const parent = (i - 1) >> 1
+    if (!before(heap[i], heap[parent])) break
+    swap(heap, i, parent)
+    i = parent
+  }
+}
+
+function pop(heap: QueueItem[]): QueueItem {
+  const top = heap[0]
+  const last = heap.pop() as QueueItem
+  if (heap.length === 0) return top
+  heap[0] = last
+  for (let i = 0; ;) {
+    const left = i * 2 + 1
+    const right = left + 1
+    let smallest = i
+    if (left < heap.length && before(heap[left], heap[smallest])) smallest = left
+    if (right < heap.length && before(heap[right], heap[smallest])) smallest = right
+    if (smallest === i) return top
+    swap(heap, i, smallest)
+    i = smallest
+  }
+}
+
+function swap(heap: QueueItem[], a: number, b: number): void {
+  const item = heap[a]
+  heap[a] = heap[b]
+  heap[b] = item
 }

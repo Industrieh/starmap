@@ -76,8 +76,10 @@
 
   /* Everything the renderer draws carries `data-kind`, so a hover state costs
      one rule and no re-render at all. Presentation attributes lose to CSS,
-     which is what makes this work without touching the renderer. */
-  .stage [data-kind] {
+     which is what makes this work without touching the renderer. Lanes and
+     local routes are tagged too, but pressing one selects nothing here, so
+     they keep the default cursor. */
+  .stage [data-kind]:not([data-kind="lane"], [data-kind="route"]) {
     cursor: pointer;
   }
 

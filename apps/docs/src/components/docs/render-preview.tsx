@@ -13,7 +13,26 @@ import { cn } from '@/lib/utils'
  * `dangerouslySetInnerHTML` is the right tool and not a risk: the string comes
  * from our own fixture at build time, and the renderer escapes every name it is
  * given anyway. There is no user input on this path at all.
+ *
+ * Every drawing takes an `alt`, for the same reason an `<img>` does: the frame
+ * is announced as one image with that name, rather than skipped — or read out
+ * as a run of planet labels in document order. A drawing rendered with a
+ * `title` already names itself (`role="img"` and a `<title>` child), and then
+ * keeps its own name: wrapping it would hide the very thing the Framing page
+ * demonstrates.
  */
+
+/**
+ * Props that name a drawing, unless its markup already does — for the element
+ * that wraps the injected `<svg>`.
+ *
+ * `role="img"` on a `div` is deliberate. The drawing is inline markup, not a
+ * file an `<img>` could point at, and turning every one into a `data:` URI would
+ * add a third to the weight of pages that are already mostly SVG.
+ */
+export function drawingName(svg: string, alt: string): { role?: 'img'; 'aria-label'?: string } {
+  return svg.includes('<title>') ? {} : { role: 'img', 'aria-label': alt }
+}
 
 /**
  * The frame takes the shape of the drawing inside it.
@@ -38,6 +57,8 @@ export function aspectOf(svg: string): number {
 export type RenderPreviewProps = {
   /** The drawing itself, already rendered. */
   svg: string
+  /** What the drawing shows, for a screen reader. */
+  alt: string
   /** The call that produced it. Omit for a bare picture. */
   code?: string
   /** A line under the frame — what to look at, usually. */
@@ -59,6 +80,7 @@ const MAX_HEIGHTS = {
 
 export function RenderPreview({
   svg,
+  alt,
   code,
   caption,
   height = 'lg',
@@ -66,7 +88,9 @@ export function RenderPreview({
 }: RenderPreviewProps): JSX.Element {
   return (
     <figure className={cn('mt-6', className)}>
-      {code ? <CodeBlock code={code} lang="ts" className="mb-3 rounded-b-none border-b-0" /> : null}
+      {/* Joined to the frame below it — no margin, no rounded corners where they
+          meet — because the code and its output are one statement. */}
+      {code ? <CodeBlock code={code} lang="ts" className="rounded-b-none border-b-0" /> : null}
 
       <div
         style={{ aspectRatio: aspectOf(svg) }}
@@ -79,7 +103,11 @@ export function RenderPreview({
         {/* The drawing carries its own background, so it needs no styling of its
             own — only a box shaped like it. `[&>svg]` reaches the root element
             the renderer emitted. */}
-        <div className="size-full [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: svg }} />
+        <div
+          {...drawingName(svg, alt)}
+          className="size-full [&>svg]:size-full"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
       </div>
 
       {caption ? (
@@ -95,8 +123,8 @@ export function RenderCompare({
   right,
   className,
 }: {
-  left: { svg: string; label: ReactNode }
-  right: { svg: string; label: ReactNode }
+  left: { svg: string; alt: string; label: ReactNode }
+  right: { svg: string; alt: string; label: ReactNode }
   className?: string
 }): JSX.Element {
   return (
@@ -111,6 +139,7 @@ export function RenderCompare({
             className="flex w-full items-center justify-center overflow-hidden rounded-xl border bg-muted/20"
           >
             <div
+              {...drawingName(side.svg, side.alt)}
               className="size-full [&>svg]:size-full"
               dangerouslySetInnerHTML={{ __html: side.svg }}
             />

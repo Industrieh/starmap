@@ -4,16 +4,20 @@ import { usePathname } from 'next/navigation'
 import type { JSX } from 'react'
 
 import { DocsNav } from '@/components/docs-nav'
-import { Sidebar, SidebarContent, SidebarProvider } from '@/components/ui/sidebar'
 import { findLibrary } from '@/lib/routes'
 
 /**
- * The desktop column.
+ * The desktop column: sticky under the header, scrolling on its own past the
+ * fold.
  *
- * `collapsible="none"` on purpose: the collapsible variants position themselves
- * against the viewport, which fights the sticky header above. With `none` the
- * component renders a plain block and this file owns the geometry — sticky under
- * the header, scrolling on its own past the fold.
+ * It used to be shadcn's `Sidebar` with `collapsible="none"` — which renders a
+ * plain block anyway, but needs `SidebarProvider` around it, and the provider
+ * installs a window-wide Ctrl/Cmd+B handler (the browser's bookmark shortcut)
+ * and writes a cookie, both to toggle a column that cannot collapse. Two plain
+ * elements carry the same geometry without either.
+ *
+ * The outer one is a flex item of the docs layout, so it stretches to the full
+ * height of the page; that is what gives the inner, sticky one room to stick.
  *
  * Which library it shows is read from the URL rather than passed down, so no
  * layout has to thread it through.
@@ -25,15 +29,10 @@ export function DocsSidebar(): JSX.Element | null {
   if (!library) return null
 
   return (
-    <SidebarProvider className="hidden min-h-0 w-auto md:block">
-      <Sidebar
-        collapsible="none"
-        className="sticky top-(--header-height) h-[calc(100svh-var(--header-height))] w-64 overflow-y-auto border-r-0 bg-transparent py-8 pr-6"
-      >
-        <SidebarContent className="gap-6">
-          <DocsNav library={library} />
-        </SidebarContent>
-      </Sidebar>
-    </SidebarProvider>
+    <div className="hidden md:block">
+      <div className="sticky top-(--header-height) flex h-[calc(100svh-var(--header-height))] w-64 flex-col overflow-y-auto py-8 pr-6 text-sidebar-foreground">
+        <DocsNav library={library} className="gap-6" />
+      </div>
+    </div>
   )
 }

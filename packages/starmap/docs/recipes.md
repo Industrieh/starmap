@@ -118,18 +118,23 @@ where the types stop.
 import { validateGalaxy, type Galaxy } from '@industrieh/starmap'
 
 export function load(json: string): Galaxy {
-  const galaxy = JSON.parse(json) as Galaxy
-  const issues = validateGalaxy(galaxy)
+  const data: unknown = JSON.parse(json)
+  const issues = validateGalaxy(data)
   if (issues.length) {
     throw new Error(issues.map((i) => `${i.path}: ${i.message}`).join('\n'))
   }
-  return galaxy
+  return data as Galaxy
 }
 ```
 
 `validateGalaxy()` **never throws**, not even on `null` or on a completely
-malformed object. It returns every problem it found, each located by its path, so
-you can fix a content file in one pass instead of ten.
+malformed object — it takes `unknown` for that reason. It returns every problem
+it found, each located by its path, so you can fix a content file in one pass
+instead of ten. A galaxy built for another `FORMAT_VERSION` comes back as a
+single issue on `meta.formatVersion`: migrate it before anything else.
+
+`assertValidGalaxy(data)` does the same and throws a `GalaxyValidationError`;
+once it returns, TypeScript knows `data` is a `Galaxy`, no cast needed.
 
 If you start from a serialized `GalaxyInput` rather than a `Galaxy`, just call
 `createGalaxy()` again: it normalizes **and** validates.
@@ -252,7 +257,7 @@ import { createRng } from '@industrieh/starmap'
 
 /** A station's stock, stable for a given save and station. */
 function stock(seed: string, stationId: string) {
-  const rng = createRng(`${seed}:${stationId}:stock`)
+  const rng = createRng(seed).fork(`${stationId}:stock`) // = createRng(`${seed}:${stationId}:stock`)
   return {
     credits: rng.randInt(100, 5000),
     goods: rng.pick(['ore', 'food', 'weapons', 'data']),
@@ -286,10 +291,10 @@ const galaxy = createGalaxy(input, { validate: false })
 Keep that for cases you have measured. Validation is what protects you from
 dangling references, and it is not expensive.
 
-**`findRoute()` is Dijkstra with a naive queue**, O(n²) in the number of systems,
-and it rebuilds its adjacency list on every call. Comfortable up to a few
-thousand systems. If you compute many routes, cache the results or index the
-graph yourself.
+**`findRoute()` is Dijkstra with a binary heap**, O((V + E) log V). Handed a
+galaxy, it indexes the network on every call; if you compute many routes, build
+that index once with `indexNetwork(galaxy)` and pass it instead — `neighboursOf`,
+`lanesOf` and `connectedComponents` take it too.
 
 **Generating in a worker** is fine — the library has no DOM dependency:
 

@@ -10,7 +10,8 @@ open out/system.svg
 
 `private: true` — this package never goes to npm. It exists so the docs are
 _checkable_: if it stops compiling or running, the API moved and the docs did
-not follow. `bun run typecheck` at the root covers it.
+not follow. `bun run typecheck` at the root catches a break in compiling, and CI
+also runs it — `bun run example:svg` — to catch a break at run time.
 
 It writes four files to `out/`:
 
@@ -25,8 +26,8 @@ It writes four files to `out/`:
 
 1. **describe** three systems, leaving out everything derivable;
 2. **draw a system** with `renderSystem()`, at a moment you choose;
-3. **draw it again later** — `t` is the only difference, and the planets have
-   moved;
+3. **draw it again later** — the same options with another `t` (and its own
+   `idPrefix`, so both drawings can share a page), and the planets have moved;
 4. **draw the galaxy** with `renderGalaxy()`, highlighting a route found by
    `findRoute()`;
 5. **draw a thumbnail** — the same call with a theme and a few options off.

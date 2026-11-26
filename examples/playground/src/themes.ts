@@ -8,7 +8,7 @@
  *   `renderGalaxy()`. The core model carries no colour at all, so this is where
  *   `planet.type → appearance` is decided;
  * - the **interface** theme is plain CSS, in `styles.css`, switched by a
- *   `data-theme` attribute on `<html>`.
+ *   `data-theme` attribute on the app's `<main>` element (`App.tsx`).
  *
  * They are set together by the toolbar, and they stay two things, because one
  * of them ends up inside an SVG string and the other does not.
@@ -25,12 +25,18 @@ export type ThemeName = 'dark' | 'light'
 const dark: ThemeInput = {}
 
 /**
- * A daylight version. The star glow and the planet shading are drawn with fixed
- * white and black gradients, so a light background flattens the star a little —
- * turning the backdrop off (the toolbar does) reads better.
+ * A daylight version.
+ *
+ * `light` and `shade` are the two ends of the drawing's lighting: the core of a
+ * star and the lit side of a planet, and a planet's dark side. The defaults are
+ * pure white and pure black, made for a dark sky. On a pale one a white core
+ * melts into the background and black shading reads as soot, so here the light
+ * is a warm cream and the shade is the interface's own ink.
  */
 const light: ThemeInput = {
   background: '#f4f6fb',
+  light: '#fff1c9',
+  shade: '#16203a',
   backdropStar: '#b9c2d6',
   label: '#16203a',
   orbit: '#c3ccdf',

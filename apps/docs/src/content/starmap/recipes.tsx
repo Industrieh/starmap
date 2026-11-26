@@ -88,24 +88,20 @@ if (here?.kind === 'system') {
 
       <CodeBlock
         lang="ts"
-        code={`import { validateGalaxy, FORMAT_VERSION, type Galaxy } from '@industrieh/starmap'
+        code={`import { assertValidGalaxy, validateGalaxy, type Galaxy } from '@industrieh/starmap'
 
 function loadGalaxy(json: string): Galaxy {
-  const galaxy = JSON.parse(json) as Galaxy
+  const data: unknown = JSON.parse(json)
 
-  const issues = validateGalaxy(galaxy)     // never throws, whatever you pass it
-  if (issues.length) {
-    throw new Error(
-      \`This save is not loadable:\\n\` +
-        issues.map((i) => \`  • \${i.path}: \${i.message}\`).join('\\n'),
-    )
+  // validateGalaxy() never throws. A save written for another FORMAT_VERSION comes
+  // back as a single issue on meta.formatVersion, with nothing else checked —
+  // its shape is another contract's, so migrate it first.
+  if (validateGalaxy(data)[0]?.path === 'meta.formatVersion') {
+    return loadGalaxy(JSON.stringify(migrate(data)))   // migrate() is yours
   }
 
-  if (galaxy.meta.formatVersion !== FORMAT_VERSION) {
-    console.warn(\`Save written for format \${galaxy.meta.formatVersion}, current is \${FORMAT_VERSION}\`)
-  }
-
-  return galaxy
+  assertValidGalaxy(data)   // throws GalaxyValidationError, every problem listed
+  return data               // typed as a Galaxy from here on — no cast
 }`}
       />
 
@@ -129,7 +125,8 @@ function loadGalaxy(json: string): Galaxy {
         </LI>
         <LI>
           <strong>Bump nothing silently.</strong> <C>meta.formatVersion</C> records the shape of the
-          data at build time. Compare it on load, and you find out before a missing field does.
+          data at build time, and <C>validateGalaxy()</C> compares it on load: a save from another
+          format is reported as exactly that, before a missing field is.
         </LI>
         <LI>
           <strong>Treat unknown ids as data, not as crashes.</strong> A save referring to a system
@@ -203,7 +200,7 @@ export function styleOf(type: PlanetType | undefined) {
 // createGalaxy fills in the ids, the counts and the lane lengths.
 const input = JSON.parse(await readFile('universe.json', 'utf8')) as GalaxyInput
 
-const galaxy = createGalaxy(input)   // throws, with every problem listed`}
+const galaxy = createGalaxy(input)   // throws, every problem listed with its path — a wrong shape too`}
       />
 
       <P>
@@ -217,12 +214,13 @@ const galaxy = createGalaxy(input)   // throws, with every problem listed`}
 
       <UL>
         <LI>
-          <strong>Pathfinding past a few thousand systems.</strong>{' '}
+          <strong>Many routes, every frame.</strong>{' '}
           <A href={routes.page('starmap', 'querying')}>
             <C>findRoute()</C>
           </A>{' '}
-          uses a linear-scan priority queue. Build the adjacency list once and swap in a binary heap
-          — the graph is yours, and the function is forty lines to reimplement.
+          is Dijkstra on a binary heap, <C>O((V + E) log V)</C>; what adds up is rebuilding the
+          graph on each call when you hand it a galaxy. Build it once with <C>indexNetwork()</C> and
+          pass that instead.
         </LI>
         <LI>
           <strong>Very large galaxies in memory.</strong> A galaxy is plain data, so it splits: keep

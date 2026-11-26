@@ -5,12 +5,15 @@ import type { JSX } from 'react'
 import { CodeBlock } from '@/components/code-block'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { pageMetadata } from '@/lib/metadata'
 import { LIBRARIES, SITE_URL, routes } from '@/lib/routes'
+import { versionOf } from '@/lib/versions'
 
-export const metadata: Metadata = {
-  title: 'Documentation',
+export const metadata: Metadata = pageMetadata({
+  segments: ['Documentation'],
   description: 'Two libraries, one site: the model and the renderer.',
-}
+  path: routes.docs,
+})
 
 export default async function DocsIndexPage(): Promise<JSX.Element> {
   return (
@@ -24,11 +27,18 @@ export default async function DocsIndexPage(): Promise<JSX.Element> {
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2">
         {LIBRARIES.map((library) => (
-          <Card key={library.slug} className="transition-colors hover:border-foreground/20">
+          // `relative` is what contains the link's `after:absolute after:inset-0`
+          // overlay: without it the overlay stretched to the nearest positioned
+          // ancestor, covered the whole page, and every click opened the last
+          // card's library.
+          <Card
+            key={library.slug}
+            className="relative transition-colors hover:border-foreground/20"
+          >
             <CardHeader>
               <div className="flex items-center gap-2">
                 <CardTitle>{library.name}</CardTitle>
-                <Badge variant="secondary">v{library.version}</Badge>
+                <Badge variant="secondary">v{versionOf(library.slug)}</Badge>
               </div>
               <CardDescription>{library.tagline}</CardDescription>
             </CardHeader>
@@ -69,8 +79,8 @@ export default async function DocsIndexPage(): Promise<JSX.Element> {
             </a>
           </dt>
           <dd className="mt-1 text-sm text-muted-foreground">
-            Everything, in one file — both READMEs and every guide, about 120 KB. One fetch and the
-            model has the whole API, the data model and the design decisions.
+            Everything, in one file — both READMEs and every guide, well over 100 KB. One fetch and
+            the model has the whole API, the data model and the design decisions.
           </dd>
         </div>
       </dl>
@@ -98,8 +108,11 @@ the core never draws, and the renderer never invents world data.`}
       </p>
 
       <p className="mt-6 text-sm text-muted-foreground">
-        Both are generated at build time from the same source as this site, so they carry the
-        version you see above and never drift from the pages they describe.
+        Both are generated at build time, so they carry the version you see above.{' '}
+        <code className="font-mono">llms.txt</code> is built from the same page list as this
+        site&apos;s navigation. <code className="font-mono">llms-full.txt</code> is the Markdown
+        that ships with each package — written alongside these pages rather than generated from
+        them, and kept in step by hand.
       </p>
     </div>
   )

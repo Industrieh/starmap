@@ -3,7 +3,10 @@
  *
  * `renderSystem()` and `renderGalaxy()` return a string, so a React component
  * that shows one is `dangerouslySetInnerHTML` and nothing more. There is no
- * `<Planet>` component in this app, and the renderer ships none.
+ * `<Planet>` component in this app, and the renderer ships none. The stage
+ * takes either that string (`svg`), or an `<svg>` element a view composes from
+ * layers itself (`children`) — which is what the system view does, to redraw
+ * only what moves.
  *
  * Interactivity rests on one thing: every object the renderer draws sits in a
  * group carrying `data-kind` and `data-id`.
@@ -13,18 +16,22 @@
  * So a single listener on the container is enough. `closest('[data-id]')` walks
  * up from whatever was actually hit — the shading circle of a planet, the square
  * of a gate — to the group the renderer tagged. Nothing is bound per object,
- * which is what lets the whole markup be replaced on the next frame.
+ * which is what lets the markup be replaced on the next frame.
  *
- * That last part is also why this component cannot use `click` and `dblclick`.
- * A system drawing is rebuilt sixty times a second, so the circle the pointer
- * went down on is gone by the time it comes back up: the browser then reports
- * the click on the nearest surviving ancestor — this `<div>`, which carries no
- * `data-id` — and never reports a double-click at all, because that needs two
- * clicks on one node. Both gestures are therefore recognised from `pointerdown`,
- * where the hit is read while the node still exists.
+ * Lanes and local routes are tagged too (`data-kind="lane"` and `"route"`), so
+ * they come back as hits like anything else. What to do with them is the
+ * caller's decision — here, they are not objects the inspector knows.
+ *
+ * That replacement is also why this component cannot use `click` and
+ * `dblclick`. The planets of a system drawing are rebuilt sixty times a second,
+ * so the circle the pointer went down on is gone by the time it comes back up:
+ * the browser then reports the click on the nearest surviving ancestor — which
+ * carries no `data-id` — and never reports a double-click at all, because that
+ * needs two clicks on one node. Both gestures are therefore recognised from
+ * `pointerdown`, where the hit is read while the node still exists.
  */
 
-import { useMemo, useRef, type JSX, type PointerEvent } from 'react'
+import { useMemo, useRef, type JSX, type PointerEvent, type ReactNode } from 'react'
 
 /** What was under the pointer: the object's id and what kind of thing it is. */
 export interface Hit {
@@ -33,8 +40,10 @@ export interface Hit {
 }
 
 export interface SvgStageProps {
-  /** The SVG document, as returned by the renderer. */
-  svg: string
+  /** The SVG document as a string, as `renderGalaxy()` returns it. */
+  svg?: string
+  /** Or the drawing as elements: an `<svg>` the view composes itself. */
+  children?: ReactNode
   className?: string
   /** An object was pressed. */
   onPick?: (hit: Hit) => void
@@ -62,12 +71,27 @@ const DOUBLE_CLICK_MS = 400
 /** How far the pointer may travel between the two, in CSS pixels. */
 const DOUBLE_CLICK_SLOP = 8
 
-export function SvgStage({ svg, className, onPick, onEnter, onHover }: SvgStageProps): JSX.Element {
+export function SvgStage({
+  svg,
+  children,
+  className,
+  onPick,
+  onEnter,
+  onHover,
+}: SvgStageProps): JSX.Element {
   // The previous press: what it hit, when, and where. Kept in a ref because
   // nothing on screen depends on it — it only has to survive to the next press.
   const previous = useRef<{ id: string; time: number; x: number; y: number } | null>(null)
 
   const press = (event: PointerEvent<HTMLDivElement>): void => {
+    // `pointerdown` fires for every button, unlike `click`. Only the primary
+    // one — left button, a finger, a pen tip — picks or travels; two right-clicks
+    // in a row are not a double-click. They do break a pending one.
+    if (event.button !== 0 || !event.isPrimary) {
+      previous.current = null
+      return
+    }
+
     const hit = hitOf(event.target)
     if (!hit) {
       previous.current = null
@@ -97,10 +121,10 @@ export function SvgStage({ svg, className, onPick, onEnter, onHover }: SvgStageP
   const hover = (event: PointerEvent<HTMLDivElement>): void => onHover?.(hitOf(event.target))
 
   // A fresh `{ __html }` object counts as a changed prop, and React writes the
-  // markup again whether or not the string moved — sixty pointless rewrites a
-  // second on a galaxy map, which never changes between frames. Keeping the
-  // object stable for as long as the string is leaves that DOM alone.
-  const html = useMemo(() => ({ __html: svg }), [svg])
+  // markup again whether or not the string moved — a pointless rewrite on every
+  // re-render of a galaxy map that has not changed. Keeping the object stable
+  // for as long as the string is leaves that DOM alone.
+  const html = useMemo(() => (svg === undefined ? undefined : { __html: svg }), [svg])
 
   // `stage` is not decoration: it is the hook the rules in `styles.css` need to
   // reach inside the injected drawing, where there is no element to class.
@@ -113,6 +137,8 @@ export function SvgStage({ svg, className, onPick, onEnter, onHover }: SvgStageP
       onPointerMove={onHover ? hover : undefined}
       onPointerLeave={onHover ? () => onHover(null) : undefined}
       dangerouslySetInnerHTML={html}
-    />
+    >
+      {children}
+    </div>
   )
 }

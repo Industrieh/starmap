@@ -1,18 +1,21 @@
 import { findRoute } from '@industrieh/starmap'
 import { renderGalaxy, renderSystem } from '@industrieh/starmap-render'
 import { ArrowRightIcon } from 'lucide-react'
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { JSX, ReactNode } from 'react'
 
 import { CodeBlock } from '@/components/code-block'
-import { aspectOf } from '@/components/docs/render-preview'
+import { aspectOf, drawingName } from '@/components/docs/render-preview'
 import { StarField } from '@/components/star-field'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { GALAXY, SOL } from '@/content/starmap-render/fixture'
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE } from '@/lib/metadata'
 import { LIBRARIES, routes } from '@/lib/routes'
 import { cn } from '@/lib/utils'
+import { versionOf } from '@/lib/versions'
 
 /**
  * The home page.
@@ -22,10 +25,24 @@ import { cn } from '@/lib/utils'
  * draws from. Nothing here is a screenshot, so nothing here can drift from what
  * the libraries actually do — which is the whole argument the page is making.
  *
- * **Each drawing needs its own `idPrefix`.** A drawing declares gradients in
- * `<defs>` and SVG ids are global to the document, so two drawings sharing a
- * prefix would both use the first one's star colour. There are five on this page.
+ * **Each drawing names its own `idPrefix`.** A drawing declares gradients in
+ * `<defs>` and SVG ids are global to the document. A system's default prefix is
+ * built from its id, which keeps *different* systems apart on its own — but this
+ * page draws the same Sol three times and the same galaxy twice, and the same
+ * drawing twice on a page is exactly where two of them could share ids.
  */
+
+/** The home page keeps the site's own title; it only adds what a page must state. */
+export const metadata: Metadata = {
+  alternates: { canonical: routes.home },
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: routes.home,
+  },
+}
 
 /** A real call against the real API — this is the code, and below it the output. */
 const SAMPLE = `import { createGalaxy, findRoute } from '@industrieh/starmap'
@@ -39,7 +56,7 @@ const galaxy = createGalaxy({
   lanes: [{ from: 'sol', to: 'alpha' }],
 })
 
-findRoute(galaxy, 'sol', 'alpha') // ['sol', 'alpha']
+findRoute(galaxy, 'sol', 'alpha') // { systemIds: ['sol', 'alpha'], distance: 500, jumps: 1 }
 renderGalaxy(galaxy)              // '<svg …>'`
 
 // --- the drawings, all five of them, built once at module scope.
@@ -87,8 +104,19 @@ const FACTS = [
  * a wide box is letterboxed, and the wasted background reads as a bug. The
  * `[&>svg]` selector has to sit on the element that *directly* wraps the markup,
  * or it matches nothing.
+ *
+ * `alt` names the drawing for a screen reader, the way it would on an `<img>`:
+ * the frame is announced as one image rather than as a run of planet labels.
  */
-function Figure({ svg, className }: { svg: string; className?: string }): JSX.Element {
+function Figure({
+  svg,
+  alt,
+  className,
+}: {
+  svg: string
+  alt: string
+  className?: string
+}): JSX.Element {
   return (
     <div
       style={{ aspectRatio: aspectOf(svg) }}
@@ -96,7 +124,11 @@ function Figure({ svg, className }: { svg: string; className?: string }): JSX.El
     >
       {/* The drawing carries its own background, so it needs a box and nothing
           else. */}
-      <div className="size-full [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: svg }} />
+      <div
+        {...drawingName(svg, alt)}
+        className="size-full [&>svg]:size-full"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
     </div>
   )
 }
@@ -136,7 +168,7 @@ function Feature({
 
 export default function HomePage(): JSX.Element {
   return (
-    <>
+    <main>
       <section className="relative overflow-hidden border-b">
         {/* The sky is masked so it thins out behind the text — a backdrop has to
             lose against the words in front of it. */}
@@ -145,7 +177,7 @@ export default function HomePage(): JSX.Element {
         <div className="relative mx-auto max-w-screen-xl px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto max-w-3xl text-center">
             <Badge variant="secondary" className="font-mono">
-              v{LIBRARIES[0].version}
+              v{versionOf('starmap')}
             </Badge>
 
             <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
@@ -188,9 +220,15 @@ export default function HomePage(): JSX.Element {
               filename="galaxy.ts"
               className="rounded-b-none border-b-0 shadow-sm"
             />
-            <Figure svg={MAP} className="rounded-t-none" />
+            <Figure
+              svg={MAP}
+              alt={`A galaxy map: ${GALAXY.systems.length} star systems joined by ${GALAXY.lanes.length} hyperlanes.`}
+              className="rounded-t-none"
+            />
             <p className="mt-3 text-center text-sm text-muted-foreground">
-              The picture above is that call, run while this page was built — not a screenshot.
+              Above, the same <code className="font-mono">renderGalaxy()</code> call on the{' '}
+              {GALAXY.systems.length}-system galaxy these docs draw from — run while this page was
+              built, not a screenshot.
             </p>
           </div>
         </div>
@@ -217,7 +255,12 @@ export default function HomePage(): JSX.Element {
         <Feature
           eyebrow="Query it"
           title="Ask where things are, and how to get there"
-          figure={<Figure svg={MAP_ROUTED} />}
+          figure={
+            <Figure
+              svg={MAP_ROUTED}
+              alt="The same galaxy map, with the route from Altair to Lyra highlighted."
+            />
+          }
         >
           <p>
             <code className="font-mono text-sm">findRoute()</code> walks the hyperlane network and
@@ -239,13 +282,16 @@ export default function HomePage(): JSX.Element {
           figure={
             <div className="grid gap-4 sm:grid-cols-2">
               <figure>
-                <Figure svg={SYSTEM_EARLY} />
+                <Figure svg={SYSTEM_EARLY} alt="The Sol system at t = 0 seconds." />
                 <figcaption className="mt-2 text-center text-sm text-muted-foreground">
                   t = 0s
                 </figcaption>
               </figure>
               <figure>
-                <Figure svg={SYSTEM_LATE} />
+                <Figure
+                  svg={SYSTEM_LATE}
+                  alt="The Sol system at t = 14 seconds: its planets have moved along their orbits."
+                />
                 <figcaption className="mt-2 text-center text-sm text-muted-foreground">
                   t = 14s
                 </figcaption>
@@ -267,7 +313,12 @@ export default function HomePage(): JSX.Element {
         <Feature
           eyebrow="Theme it"
           title="Your palette. The model never had one."
-          figure={<Figure svg={SYSTEM_THEMED} />}
+          figure={
+            <Figure
+              svg={SYSTEM_THEMED}
+              alt="The Sol system drawn with a custom theme: a deep blue background and recoloured planets."
+            />
+          }
         >
           <p>
             No colour lives in the data model: a planet has a{' '}
@@ -299,7 +350,7 @@ export default function HomePage(): JSX.Element {
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <CardTitle className="font-mono text-base">{library.packageName}</CardTitle>
-                    <Badge variant="secondary">v{library.version}</Badge>
+                    <Badge variant="secondary">v{versionOf(library.slug)}</Badge>
                   </div>
                   <CardDescription className="text-base">{library.tagline}</CardDescription>
                 </CardHeader>
@@ -317,6 +368,6 @@ export default function HomePage(): JSX.Element {
           </div>
         </div>
       </section>
-    </>
+    </main>
   )
 }

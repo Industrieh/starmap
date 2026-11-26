@@ -5,7 +5,9 @@ import type { JSX } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { pageMetadata } from '@/lib/metadata'
 import { LIBRARIES, findLibrary, routes } from '@/lib/routes'
+import { versionOf } from '@/lib/versions'
 
 type Params = { library: string }
 
@@ -14,16 +16,23 @@ export function generateStaticParams(): Params[] {
   return LIBRARIES.map((library) => ({ library: library.slug }))
 }
 
+/**
+ * Only the libraries above exist. Without this, `/docs/anything` was rendered on
+ * request — to a 404, but a 404 then cached as if it were a page.
+ */
+export const dynamicParams = false
+
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const library = findLibrary((await params).library)
   if (!library) return {}
 
-  // Absolute, for the same reason as the page below it: the template would
-  // otherwise turn "starmap" into "starmap · starmap".
-  return {
-    title: { absolute: `${library.name} · starmap` },
+  // "Overview", like the sidebar entry — and `pageMetadata` drops the library
+  // name when it is the site name, so the core reads "Overview · starmap".
+  return pageMetadata({
+    segments: ['Overview', library.name],
     description: library.tagline,
-  }
+    path: routes.library(library.slug),
+  })
 }
 
 export default async function LibraryPage({
@@ -41,7 +50,7 @@ export default async function LibraryPage({
 
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <h1 className="text-3xl font-semibold tracking-tight">{library.name}</h1>
-        <Badge variant="secondary">v{library.version}</Badge>
+        <Badge variant="secondary">v{versionOf(library.slug)}</Badge>
       </div>
 
       <p className="mt-4 text-lg text-muted-foreground">{library.tagline}</p>

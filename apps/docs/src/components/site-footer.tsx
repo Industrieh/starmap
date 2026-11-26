@@ -25,8 +25,10 @@ export function SiteFooter(): JSX.Element {
         </div>
 
         <div className="flex gap-16">
-          <nav className="flex flex-col gap-3">
-            <span className="text-sm font-medium">Libraries</span>
+          <nav aria-labelledby="footer-libraries" className="flex flex-col gap-3">
+            <span id="footer-libraries" className="text-sm font-medium">
+              Libraries
+            </span>
             {LIBRARIES.map((library) => (
               <Link
                 key={library.slug}
@@ -38,8 +40,10 @@ export function SiteFooter(): JSX.Element {
             ))}
           </nav>
 
-          <nav className="flex flex-col gap-3">
-            <span className="text-sm font-medium">Resources</span>
+          <nav aria-labelledby="footer-resources" className="flex flex-col gap-3">
+            <span id="footer-resources" className="text-sm font-medium">
+              Resources
+            </span>
             {RESOURCES.map((resource) => (
               <Link
                 key={resource.label}
@@ -57,8 +61,8 @@ export function SiteFooter(): JSX.Element {
 
       <div className="mx-auto max-w-screen-xl px-4 pb-10 sm:px-6">
         <p className="text-xs text-muted-foreground">
-          Built with Next.js and shadcn/ui. The source of every page lives next to the code it
-          describes.
+          Built with Next.js and shadcn/ui. Every drawing on this site is the renderer&apos;s real
+          output, produced while the site was built.
         </p>
       </div>
     </footer>

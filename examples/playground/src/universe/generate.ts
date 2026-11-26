@@ -36,8 +36,52 @@ import {
   type SystemInput,
 } from '@industrieh/starmap'
 
-/** How far apart two systems must be. Raise it for a sparser galaxy. */
+/**
+ * How many systems the playground lets you ask for, and how many it starts with.
+ *
+ * The ceiling is not arbitrary: placing systems is quadratic in their number
+ * and linking them is cubic, and the whole thing runs while React renders. At
+ * sixty it takes a few milliseconds; at a thousand it freezes the page for
+ * seconds. The map also stops being readable long before that.
+ */
+export const SYSTEM_COUNT: Readonly<{ min: number; max: number; default: number }> = {
+  min: 2,
+  max: 60,
+  default: 14,
+}
+
+/**
+ * Any number in, a count the generator can work with out: rounded, kept within
+ * {@link SYSTEM_COUNT}, and the default when it is not a number at all.
+ *
+ * The form's `min` and `max` only hold for a submitted form — a button that
+ * generates directly, or a cleared field, would get past them. Everything that
+ * reaches `generateGalaxy()` goes through this instead.
+ */
+export function clampSystemCount(value: number): number {
+  if (!Number.isFinite(value)) return SYSTEM_COUNT.default
+  return Math.min(SYSTEM_COUNT.max, Math.max(SYSTEM_COUNT.min, Math.round(value)))
+}
+
+/**
+ * How far apart two systems must be, in world units — the galaxy's unit of
+ * length.
+ *
+ * Everything else in the layout is a multiple of it: the disc below, and the
+ * reach of the extra lanes. So changing it rescales the whole galaxy without
+ * changing its shape — the same seed draws the same map, and only the distances
+ * shown in the inspector move. To make the galaxy sparser or denser, change
+ * {@link SPREAD}.
+ */
 const MIN_DISTANCE = 260
+
+/**
+ * How roomy the galaxy is. Raise it for a sparser galaxy, with fewer shortcuts
+ * between systems; lower it for a denser one. Too low and the disc fills up:
+ * there is no room left `MIN_DISTANCE` away from everything, and systems are
+ * dropped.
+ */
+const SPREAD = 1.15
 
 /**
  * Radius of the disc the systems are sown in.
@@ -47,7 +91,7 @@ const MIN_DISTANCE = 260
  * radius would silently drop systems, because there would be nowhere left to
  * put them that is `MIN_DISTANCE` away from everything else.
  */
-const galaxyRadius = (count: number): number => MIN_DISTANCE * Math.sqrt(count) * 1.15
+const galaxyRadius = (count: number): number => MIN_DISTANCE * Math.sqrt(count) * SPREAD
 
 /** Star classes, with the relative weight of each. `w` is what `rng.weighted` reads. */
 const STAR_CLASSES = [
@@ -102,7 +146,7 @@ const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
  * throws if the description contradicts itself. A generator with a bug fails
  * here, loudly, instead of producing a subtly broken world.
  */
-export function generateGalaxy(seed: string, systemCount = 14): Galaxy {
+export function generateGalaxy(seed: string, systemCount: number = SYSTEM_COUNT.default): Galaxy {
   const rng = createRng(seed)
   const points = placeSystems(rng, systemCount)
   const lanes = linkSystems(rng, points)
@@ -162,7 +206,12 @@ function placeSystems(rng: Rng, count: number): Point[] {
   return points
 }
 
-/** A name no other system carries, falling back to a numbered one. */
+/**
+ * A name no other system carries, falling back to a numbered one.
+ *
+ * The fallback is recorded like any other name. Otherwise two systems placed
+ * after the tables run out would both be called `Sector 121`.
+ */
 function uniqueName(rng: Rng, used: Set<string>): string {
   for (let attempt = 0; attempt < 30; attempt++) {
     const name = `${rng.pick(PREFIXES)}${rng.pick(SUFFIXES)}`
@@ -171,7 +220,11 @@ function uniqueName(rng: Rng, used: Set<string>): string {
       return name
     }
   }
-  return `Sector ${used.size + 1}`
+  let number = used.size + 1
+  while (used.has(`Sector ${number}`)) number++
+  const name = `Sector ${number}`
+  used.add(name)
+  return name
 }
 
 // ------------------------------------------------------------------ linking
@@ -231,7 +284,7 @@ function linkSystems(rng: Rng, points: readonly Point[]): LaneInput[] {
 
 /** A hyperlane is undirected, so its key must not depend on the order. */
 function pairKey(a: Point, b: Point): string {
-  return [a.id, b.id].toSorted().join('|')
+  return a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`
 }
 
 // ----------------------------------------------------------------- contents

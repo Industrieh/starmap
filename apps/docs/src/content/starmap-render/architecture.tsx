@@ -33,7 +33,7 @@ export default function Content(): JSX.Element {
   core/
     svg.ts          the string primitives: el, group, text, num, escapeXml
     theme.ts        the colours, and how a ThemeInput resolves
-    geometry.ts     framing, arcs, the decorative backdrop
+    geometry.ts     framing, the scales, arcs, the decorative backdrop
     root.ts         the <svg> element that wraps a drawing
     system.ts       drawing one system
     galaxy.ts       drawing the whole map`}
@@ -65,7 +65,9 @@ export default function Content(): JSX.Element {
             type: 'imports: the core',
             description: (
               <>
-                <C>hashSeed</C>, <C>mulberry32</C>, <C>round</C>, <C>toRad</C>. Framing and arcs.
+                <C>hashSeed</C>, <C>mulberry32</C>, <C>round</C>, <C>toRad</C>. Framing, arcs, and
+                the scales — <C>systemScale()</C> and <C>galaxyScale()</C>, exported so an overlay
+                can size itself like the drawing.
               </>
             ),
           },
@@ -101,12 +103,14 @@ export default function Content(): JSX.Element {
         noCopy
         code={`  options
      │
-     ├─► resolveTheme(input)        a complete Theme
+     ├─► resolveTheme(input)        a complete Theme (a resolved one passes as is)
      ├─► systemViewBox(system)      the frame, in world units
+     ├─► systemScale(view)          glyph, stroke and label sizes, from the frame
      └─► systemPositions(system, t) where everything is  ← from the core
              │
              ▼
-     draw each layer, in order      an array of strings
+     draw each requested layer      an array of strings — every layer unless
+     in SYSTEM_LAYERS order         options.layers names a subset
              │
              ▼
      drop the empty ones, join      the content
@@ -116,8 +120,9 @@ export default function Content(): JSX.Element {
       />
 
       <P>
-        No state, no mutation, no second pass. A layer that produces nothing is dropped before the
-        join, which is why an empty group is never emitted.
+        No state, no mutation, no second pass. A layer left out of <C>layers</C> is never computed,
+        and a layer that produces nothing is dropped before the join, which is why an empty group is
+        never emitted.
       </P>
 
       <H2 id="svg-ts">One file writes tags</H2>
@@ -209,8 +214,9 @@ group({ id: 'x' }, ['', ''])                  // ''  — an empty group is not e
         <strong>Change how an object looks</strong> — the matching <C>draw*</C> function in{' '}
         <C>system.ts</C> or <C>galaxy.ts</C>. Then{' '}
         <A href={`${routes.page('starmap-render', 'recipes')}#looking`}>look at it</A>: a visual
-        change needs eyes on it, not only a green test run. Sizes go through the file&apos;s{' '}
-        <C>Scale</C> — <C>u</C>, <C>k</C>, <C>font</C> — never in absolute units.
+        change needs eyes on it, not only a green test run. Sizes go through the scale —{' '}
+        <C>systemScale()</C>&apos;s <C>u</C>, <C>k</C>, <C>font</C>, or <C>galaxyScale()</C> on the
+        map — never in absolute units.
       </P>
 
       <P>
@@ -227,9 +233,10 @@ group({ id: 'x' }, ['', ''])                  // ''  — an empty group is not e
 
       <P>
         <strong>Add a drawable object</strong> — a <C>draw*</C> function returning a string, and its
-        place in the layer order. Order <em>is</em> the composition. Give its group a{' '}
-        <C>data-kind</C> and a <C>data-id</C> so an application can find it, and its colour a home
-        in the theme.
+        place in the layer order: <C>SYSTEM_LAYERS</C> or <C>GALAXY_LAYERS</C>, and the{' '}
+        <C>SystemLayer</C> or <C>GalaxyLayer</C> type. Order <em>is</em> the composition. Give its
+        group a <C>data-kind</C> and a <C>data-id</C> so an application can find it, and its colour
+        a home in the theme.
       </P>
 
       <P>

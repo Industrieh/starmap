@@ -10,9 +10,12 @@ import type { TocEntry } from '@/content/registry'
 import { GALAXY, SOL } from '@/content/starmap-render/fixture'
 import { routes } from '@/lib/routes'
 
+// The snippet's own call, title included — so the drawing below it is that code.
+const ROUTE = findRoute(GALAXY, 'altair', 'lyra')
 const ROUTED = renderGalaxy(GALAXY, {
   idPrefix: 're-routed',
-  highlight: findRoute(GALAXY, 'altair', 'lyra')?.systemIds,
+  highlight: ROUTE?.systemIds,
+  title: ROUTE ? `${ROUTE.jumps} jumps, ${Math.round(ROUTE.distance)} units` : 'No route',
 })
 const FULL = renderSystem(SOL, { t: 4, idPrefix: 're-full' })
 const THUMB = renderSystem(SOL, {
@@ -63,7 +66,6 @@ for (const system of galaxy.systems) {
     \`out/\${system.id}.svg\`,
     renderSystem(system, {
       title: system.name,
-      idPrefix: system.id,   // each file is its own document, but this keeps them safe to inline later
       systems,               // so gate labels name where they lead
     }),
   )
@@ -80,8 +82,10 @@ for (const system of galaxy.systems) {
         lang="ts"
         code={`Bun.serve({
   routes: {
-    '/system/:id.svg': (request) => {
-      const system = systems.get(request.params.id)
+    // A parameter runs to the next slash: written \`:id.svg\`, it would be one
+    // parameter named "id.svg". Take the whole segment, then the extension off.
+    '/system/:id': (request) => {
+      const system = systems.get(request.params.id.replace(/\\.svg$/, ''))
       if (!system) return new Response('Not found', { status: 404 })
 
       return new Response(renderSystem(system, { title: system.name }), {
@@ -112,9 +116,12 @@ for (const system of galaxy.systems) {
         code={`import { useMemo } from 'react'
 import { renderSystem } from '@industrieh/starmap-render'
 
-// Interactive: the SVG becomes part of the DOM, so data-id is reachable.
+// Interactive: the SVG becomes part of the DOM, so data-id is reachable. The markup
+// is replaced whenever t changes, so listen for pointerdown on the wrapper — a
+// click needs the press and the release on one element, and a new frame between
+// them has replaced it.
 function SystemView({ system, t }: { system: StarSystem; t: number }) {
-  const svg = useMemo(() => renderSystem(system, { idPrefix: system.id, t }), [system, t])
+  const svg = useMemo(() => renderSystem(system, { t }), [system, t])
   return <div className="h-full" dangerouslySetInnerHTML={{ __html: svg }} />
 }
 
@@ -142,25 +149,25 @@ function SystemThumb({ system }: { system: StarSystem }) {
 
       <CodeBlock
         lang="ts"
-        code={`import { systemPositions } from '@industrieh/starmap'
-import {
-  el, group, text, renderSystemContent, systemViewBox, viewBoxAttr,
+        code={`import {
+  el, group, text, renderSystemContent, systemScale, systemViewBox, viewBoxAttr,
 } from '@industrieh/starmap-render'
 
 function draw(system: StarSystem, t: number, ships: Ship[]) {
-  const at = systemPositions(system, t)
+  const view = systemViewBox(system)
+  const { u, font } = systemScale(view)     // the drawing's own units
 
   const fleet = group(
     { 'data-layer': 'fleet' },              // your own layer name
     ships.map((ship) =>
       group({ 'data-kind': 'ship', 'data-id': ship.id }, [
-        el('circle', { cx: ship.x, cy: ship.y, r: 3, fill: '#fff' }),
-        text(ship.name, { x: ship.x + 6, y: ship.y, 'font-size': 8, fill: '#fff' }),
+        el('circle', { cx: ship.x, cy: ship.y, r: u, fill: '#fff' }),
+        text(ship.name, { x: ship.x + u * 2, y: ship.y, 'font-size': font * 0.8, fill: '#fff' }),
       ]),
     ),
   )
 
-  return \`<svg viewBox="\${viewBoxAttr(systemViewBox(system))}">\` +
+  return \`<svg viewBox="\${viewBoxAttr(view)}">\` +
     renderSystemContent(system, { t }) +
     fleet +
     '</svg>'
@@ -177,7 +184,11 @@ function draw(system: StarSystem, t: number, ships: Ship[]) {
         </LI>
         <LI>
           <C>text()</C> escapes its content, which matters the moment a ship is named{' '}
-          <C>Ohm &amp; Sons</C>.
+          <C>Ohm &amp; Sons</C>;
+        </LI>
+        <LI>
+          <C>systemScale()</C> returns the units the drawing itself is sized in, so a ship drawn in{' '}
+          <C>u</C> stays in proportion in a system of any size.
         </LI>
       </UL>
 
@@ -197,7 +208,7 @@ function draw(system: StarSystem, t: number, ships: Ship[]) {
         code={`import { findRoute } from '@industrieh/starmap'
 import { renderGalaxy } from '@industrieh/starmap-render'
 
-const route = findRoute(galaxy, 'sol', 'vega')
+const route = findRoute(galaxy, 'altair', 'lyra')
 
 const map = renderGalaxy(galaxy, {
   highlight: route?.systemIds,
@@ -207,6 +218,7 @@ const map = renderGalaxy(galaxy, {
 
       <RenderPreview
         svg={ROUTED}
+        alt="The galaxy map with the route from Altair to Lyra highlighted."
         height="md"
         caption="Altair → Sol → Rigel → Lyra. The three lanes of the path are brought forward; the two that are not on it stay dim."
       />
@@ -234,9 +246,14 @@ const map = renderGalaxy(galaxy, {
       />
 
       <RenderCompare
-        left={{ svg: FULL, label: <>The full drawing.</> }}
+        left={{
+          svg: FULL,
+          alt: 'The Sol system, fully drawn.',
+          label: <>The full drawing.</>,
+        }}
         right={{
           svg: THUMB,
+          alt: 'The Sol system with thumbnail settings: no labels, no backdrop, cropped close.',
           label: (
             <>
               The thumbnail settings. Note that nothing shrank — the objects keep their real sizes;

@@ -25,6 +25,9 @@ src/content/                   the prose, one module per page
 src/components/docs/           the toolkit those pages are written with
 src/components/ui/             the shadcn components, vendored by its CLI
 src/lib/routes.ts              every path, and the shape of the navigation
+src/lib/versions.ts            the packages' versions, read on the server only
+src/lib/metadata.ts            titles, canonical URLs, Open Graph — one helper
+src/lib/svg-outline.ts         folds real renderer output into a short listing
 src/lib/utils.ts               `cn()`, the class merger shadcn components import
 src/app/globals.css            Tailwind, shadcn, the design tokens
 components.json                what the shadcn CLI reads before writing anything
@@ -43,7 +46,8 @@ Two files decide what a documentation page is:
 
 Adding a page is one entry in each. They can be written out of step: a page in
 `routes.ts` with no content renders a marker instead of a 404, so navigation can
-be planned before the prose exists.
+be planned before the prose exists. A URL that is in neither is a real 404:
+both dynamic routes set `dynamicParams = false`.
 
 The content is TSX rather than Markdown, and that is a real trade. Markdown is
 faster to write and anyone can edit it; TSX gives typechecked components
@@ -89,8 +93,8 @@ Two notes on the choices:
   Component or a script.
 - **Dynamic segments rather than a folder per page.** `[library]/[slug]` with
   `generateStaticParams` means the file tree stays two files deep while the site
-  grows. The build prerenders every page as static HTML either way — 28 of them
-  at the time of writing.
+  grows. The build prerenders every page as static HTML either way, and
+  `sitemap.xml`, built from the same list, names each one.
 
 ## The shape of the site
 
@@ -134,22 +138,29 @@ const FIRST = renderSystem(SOL, { t: 3, idPrefix: 'qs-first' })
 A drawing that stops matching the code cannot happen, because there is only one
 of them. `RenderPreview` and `RenderCompare` do nothing but frame the string —
 no client JavaScript is involved, and the renderer never reaches the browser.
+The same goes for the listings of what a call returns: `svg-outline.ts` folds
+the real output instead of a copy being typed next to it.
 
-Two things to respect when adding one:
+Three things to respect when adding one:
 
 - **Give every preview its own `idPrefix`.** A drawing declares gradients in
-  `<defs>`, and SVG ids are global to the page — two previews sharing a prefix
-  would both use the first one's star colour. It is the trap documented on the
-  Framing page, and it applies to the documentation itself.
+  `<defs>`, and SVG ids are global to the page. A system's default prefix comes
+  from its id, so two _different_ systems never collide — but these pages draw
+  the same Sol over and over, re-themed, and the same system twice on a page is
+  the one case where two previews would share gradient ids. The Framing page
+  documents it.
 - **Show the fixture, not a retyped literal.** The Quickstart prints
   `FIXTURE_SOURCE`, which is the source of the universe the drawings are made
-  from. A hand-written copy next to a real drawing is the drift this whole
-  arrangement exists to prevent.
+  from. It is written twice — as text, and as the code that builds `GALAXY` — so
+  `fixture.ts` checks when it loads that the text still builds that exact
+  galaxy, and the build fails if the two have drifted.
+- **Give it an `alt`.** It is what a screen reader announces instead of the
+  drawing — required by both components, the way it should be on an `<img>`.
 
-> **This app now depends on the two packages**, and imports resolve to their
-> `dist/`, not their sources. `bun run build` from the root orders it correctly —
-> the packages build first, the site last. `bun run docs` on a stale `dist/` will
-> happily draw yesterday's renderer.
+> **This app depends on the two packages, and imports resolve to their
+> sources**, through the `paths` in [`tsconfig.json`](tsconfig.json), which
+> Next.js follows. A change to a library shows up at the next reload of
+> `bun run docs`; there is no package to build first.
 
 ## Code blocks
 
@@ -216,8 +227,8 @@ rather than like a fresh scaffold.
   repo resolved to their sources. `isolatedDeclarations` is switched off — it
   exists so that the libraries can emit their `.d.ts` file by file, and a site
   emits nothing.
-- **Named `@industrieh/docs`**, `private`, `version 0.0.0` — an app is deployed,
-  never installed, so its version number carries no information.
+- **Named `@industrieh/docs`**, `private` — an app is deployed, never installed,
+  so its version number carries no information.
 - **No `typescript` of its own.** It uses the root's, like every other package,
   which takes one flag in [`next.config.ts`](next.config.ts) — the comment there
   explains why.
@@ -229,30 +240,31 @@ rather than like a fresh scaffold.
   with the installed version of Next.js, rather than at their training data.
   Keep your own instructions outside the `nextjs-agent-rules` markers.
 
-## Still to settle: how the site reads the packages
+## Two copies of the documentation
 
-The source of truth stays the Markdown inside each package — documentation that
-lives somewhere other than the code it describes goes stale. The site
-_aggregates_ it. How, exactly, is the open question.
+Each package still carries its own Markdown — `README.md`, `CONTRIBUTING.md`
+and `docs/` — and that is what a reader gets on GitHub and npm, and what
+`/llms-full.txt` serves (relative links rewritten to GitHub URLs on the way
+through). The pages of this site are **not** generated from it: they are TSX
+under `src/content/`, written for the site, and they cover much of the same
+ground.
 
-- **Aggregate the existing Markdown** — the site reads each package's
-  `README.md` and `docs/`. Simple, no coupling, but the relative links between
-  files (`[docs/design.md](docs/design.md)`, `../starmap/README.md`) have to be
-  rewritten at build time.
-- **Generate from the sources** (TypeDoc or equivalent, over the public
-  entries). The packages' JSDoc is already written for it — examples included,
-  `{@link}` in place. Richer for the API reference, but no replacement for the
-  guides.
+| package                                                       | its own Markdown                           | its pages here                     |
+| ------------------------------------------------------------- | ------------------------------------------ | ---------------------------------- |
+| [`@industrieh/starmap`](../../packages/starmap)               | `README.md`, `CONTRIBUTING.md` and `docs/` | `src/content/starmap/*.tsx`        |
+| [`@industrieh/starmap-render`](../../packages/starmap-render) | `README.md`, `CONTRIBUTING.md` and `docs/` | `src/content/starmap-render/*.tsx` |
 
-The likely answer is a mix: guides from the Markdown, API reference from the
-sources. Until then, the documentation of each package lives where it always
-has.
+So the two can disagree, and they have: a change to a guide usually wants the
+same change on the matching page. What keeps them honest today is narrower than
+a single source — the drawings and the output listings are generated, the
+fixture checks itself — and the prose is kept in step by hand.
 
-| package                                                       | documentation                              |
-| ------------------------------------------------------------- | ------------------------------------------ |
-| [`@industrieh/starmap`](../../packages/starmap)               | `README.md`, `CONTRIBUTING.md` and `docs/` |
-| [`@industrieh/starmap-render`](../../packages/starmap-render) | `README.md`, `CONTRIBUTING.md` and `docs/` |
+Still to settle is whether to go further:
 
-Neither package is a dependency of this app yet. Add them when the site starts
-showing live examples — they will need `transpilePackages` in `next.config.ts`,
-or a build, since their `exports` point at `dist/`.
+- **Render the Markdown** — the site reads each package's `docs/` instead of
+  its own TSX. One copy, but the structured components (`PropsTable`,
+  `ApiEntry`, live drawings) would need an MDX layer to survive.
+- **Generate the API reference from the sources** (TypeDoc or equivalent, over
+  the public entries). The packages' JSDoc is already written for it —
+  examples included, `{@link}` in place. Richer for the reference, but no
+  replacement for the guides.

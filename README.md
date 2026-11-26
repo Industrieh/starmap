@@ -257,9 +257,9 @@ renderSystem(system, {
 })
 ```
 
-> **Two drawings on one page need two `idPrefix` values.** SVG ids are global to
-> a document, so two systems sharing a prefix would both use the first one's star
-> colour. Pass `{ idPrefix: system.id }`.
+> **Several drawings on one page just work.** SVG ids are global to a document,
+> so each system's gradient ids are prefixed with its own id by default. Pass an
+> `idPrefix` only to draw the same system twice, with two themes.
 
 ---
 
@@ -456,9 +456,13 @@ and doing it manually desynchronises the changelogs.
 1. Changesets land on `main`.
 2. A bot opens a `chore: version packages` pull request that applies them: it
    bumps the versions, writes the `CHANGELOG.md` files and deletes the
-   changesets. **Merging it is what decides a release exists.**
+   changesets, and the Version workflow runs the check suite on that branch. A
+   pull request opened with `GITHUB_TOKEN` does not trigger CI by itself, so the
+   result shows on the workflow run rather than as a check on the pull request.
+   **Merging it is what decides a release exists.**
 3. Publishing a GitHub release from the resulting commit runs the full check
-   suite and, if green, publishes to npm.
+   suite and, if green, publishes to npm — each package after the ones it
+   depends on.
 
 The repo is in pre-release mode ([`.changeset/pre.json`](.changeset/pre.json),
 tag `beta`), so bumps come out as `0.1.0-beta.N`. `bun run changeset:status`
@@ -485,7 +489,8 @@ your sources.
 **Tooling at the root, dependencies in the packages.** TypeScript, oxlint, oxfmt
 and `@types/node` are root devDependencies — one version for the whole repo.
 What a package needs to build or test itself lives in its own `package.json`.
-Packages reference each other with `workspace:*`.
+Packages reference each other with `workspace:^`, published as a caret range so
+that an application shares one copy of the core.
 
 **Every package stands alone.** Its own `package.json`, `tsconfig.json`, build
 and test config, README and CONTRIBUTING. Only formatting, linting and tooling

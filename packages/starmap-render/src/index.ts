@@ -30,10 +30,22 @@
  */
 
 // --- drawing a system
-export { renderSystem, renderSystemContent, type RenderSystemOptions } from './core/system'
+export {
+  renderSystem,
+  renderSystemContent,
+  SYSTEM_LAYERS,
+  type RenderSystemOptions,
+  type SystemLayer,
+} from './core/system'
 
 // --- drawing a galaxy
-export { renderGalaxy, renderGalaxyContent, type RenderGalaxyOptions } from './core/galaxy'
+export {
+  GALAXY_LAYERS,
+  renderGalaxy,
+  renderGalaxyContent,
+  type GalaxyLayer,
+  type RenderGalaxyOptions,
+} from './core/galaxy'
 
 // --- the document around a drawing
 export { svgDocument, type DocumentOptions } from './core/root'
@@ -43,11 +55,15 @@ export {
   arcPath,
   backdropStars,
   GALAXY_MARGIN,
+  galaxyScale,
   galaxyViewBox,
   SYSTEM_MARGIN,
+  systemScale,
   systemViewBox,
   viewBoxAttr,
   type BackdropStar,
+  type GalaxyScale,
+  type SystemScale,
   type ViewBox,
 } from './core/geometry'
 

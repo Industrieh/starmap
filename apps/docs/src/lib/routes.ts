@@ -14,10 +14,11 @@
  * Router reserves `route.ts` for HTTP route handlers, and a file with that name
  * reads as an endpoint to anyone who knows Next.js. It sits in `src/lib/`
  * because it is plain data — no React, no server, importable from anywhere.
+ *
+ * It imports nothing either, and that is deliberate: the navigation's Client
+ * Components import this file, so whatever it imports ships to the browser. The
+ * versions, read from the packages' manifests, live in `versions.ts` instead.
  */
-
-import starmapRenderPkg from '../../../../packages/starmap-render/package.json'
-import starmapPkg from '../../../../packages/starmap/package.json'
 
 /** A single documentation page, one entry in the sidebar. */
 export type DocPage = {
@@ -42,15 +43,7 @@ export type Library = {
   packageName: string
   /** What the tabs show, short enough to sit in a header. */
   name: string
-  /**
-   * Read from the package's own `package.json`, never typed here: `changeset
-   * version` bumps that file, and a number copied into this one would be wrong
-   * the day after a release.
-   */
-  version: string
   tagline: string
-  /** A paragraph for the home page and the library index. */
-  summary: string
   groups: DocGroup[]
 }
 
@@ -59,25 +52,26 @@ export const GITHUB_URL = 'https://github.com/Industrieh/starmap'
 /**
  * Where this site lives, without a trailing slash.
  *
- * Only the files meant to be read away from the site need it — `llms.txt` and
- * `llms-full.txt`, whose links have to resolve from anywhere. Everything the
- * browser follows stays relative, through `routes` below.
+ * Only what is read away from the site needs it: `llms.txt`, `llms-full.txt`,
+ * the sitemap and `robots.txt`, whose links have to resolve from anywhere, and
+ * `metadataBase`, which turns canonical and Open Graph paths into absolute
+ * URLs. Everything the browser follows stays relative, through `routes` below.
  */
 export const SITE_URL = 'https://starmap.industrieh.dev'
 
 /**
- * The documentation tree. The groups mirror the Markdown that already exists in
- * each package — the site aggregates it, it does not invent it.
+ * The documentation tree. The pages themselves are written for this site, one
+ * module each under `src/content/`. Several cover the same ground as the
+ * Markdown guides in each package's `docs/` — which is what `llms-full.txt`
+ * serves — so a change to one of them usually wants the same change in the
+ * other.
  */
 export const LIBRARIES: readonly Library[] = [
   {
     slug: 'starmap',
     packageName: '@industrieh/starmap',
     name: 'starmap',
-    version: starmapPkg.version,
     tagline: 'Describe, validate and query a star universe.',
-    summary:
-      'The core. You describe your universe with a typed object, `createGalaxy()` checks and completes it, and you get back what you need to query it: indexes, routes, orbital positions over time. No dependencies, no DOM, no notion of rendering.',
     groups: [
       {
         title: 'Get started',
@@ -155,10 +149,7 @@ export const LIBRARIES: readonly Library[] = [
     slug: 'starmap-render',
     packageName: '@industrieh/starmap-render',
     name: 'starmap-render',
-    version: starmapRenderPkg.version,
     tagline: 'Turn a universe into SVG. Strings, not components.',
-    summary:
-      'The renderer. `renderSystem()` and `renderGalaxy()` turn a universe into an SVG string: no DOM, no framework, no stylesheet. Colours come in through a theme, interaction stays with your application.',
     groups: [
       {
         title: 'Get started',
@@ -250,6 +241,9 @@ export const routes = {
   page: (library: string, page: string): string => `/docs/${library}/${page}`,
   github: GITHUB_URL,
   githubPackage: (library: string): string => `${GITHUB_URL}/tree/main/packages/${library}`,
+  /** The source of a documentation page — what "Edit this page" opens. */
+  githubPage: (library: string, page: string): string =>
+    `${GITHUB_URL}/blob/main/apps/docs/src/content/${library}/${page}.tsx`,
 } as const
 
 /** One entry of the header, and of the drawer that replaces it below `md`. */

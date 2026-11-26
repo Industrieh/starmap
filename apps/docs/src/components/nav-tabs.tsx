@@ -21,12 +21,17 @@ import { cn } from '@/lib/utils'
  * any page of that library; `/docs` matches exactly, or it would be lit
  * everywhere. Both rules live in `isTabActive`, next to the list itself, because
  * the mobile drawer applies the same ones.
+ *
+ * A lit tab says `aria-current="page"` only on its own page. Below it, on one of
+ * the library's pages, it says `"true"` — the current section — because the page
+ * itself is the sidebar link, and two different links both claiming to be the
+ * current page is something a screen reader would repeat to its user.
  */
 export function NavTabs(): JSX.Element {
   const pathname = usePathname()
 
   return (
-    <NavigationMenu>
+    <NavigationMenu aria-label="Site">
       <NavigationMenuList className="gap-1">
         {NAV_TABS.map((tab) => {
           const active = isTabActive(tab, pathname)
@@ -35,7 +40,7 @@ export function NavTabs(): JSX.Element {
             <NavigationMenuItem key={tab.href}>
               <Link
                 href={tab.href}
-                aria-current={active ? 'page' : undefined}
+                aria-current={pathname === tab.href ? 'page' : active ? 'true' : undefined}
                 className={cn(
                   // The tab is exactly as tall as the bar, not one pixel less.
                   // At `h-12` it was centred in a 56px bar, so the underline

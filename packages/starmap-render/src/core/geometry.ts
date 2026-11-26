@@ -108,6 +108,60 @@ export function arcPath(r: number, startDeg: number, sweepDeg: number): string {
   return `M ${x0} ${y0} A ${round(r)} ${round(r)} 0 ${large} 1 ${x1} ${y1}`
 }
 
+/**
+ * The sizes a system drawing derives from its view.
+ *
+ * A system can be 300 world units across or 30 000. Sizing a gate glyph or a
+ * label in absolute units would make it fill the view in one system and vanish
+ * in the next, so they are fractions of the view instead. Only the objects
+ * themselves — star radius, planet radius, orbits — keep their real size.
+ *
+ * Exported so that an overlay drawn on top — a selection ring, a ship — can be
+ * sized exactly like the drawing under it.
+ */
+export interface SystemScale {
+  /** Spacing unit: a 200th of the view's width. Glyphs and gaps are multiples of it. */
+  u: number
+  /** Stroke unit: a stroke of `1` is a thin, always-visible line. */
+  k: number
+  /** Label font size. */
+  font: number
+}
+
+/** The sizes {@link renderSystem} uses for a given view. */
+export function systemScale(view: ViewBox): SystemScale {
+  return { u: view.w / 200, k: view.w / 800, font: view.w / 65 }
+}
+
+/**
+ * The sizes a galaxy drawing derives from its view: a galaxy may be 200 units
+ * across or 200 000, and a system dot has to stay a dot in both.
+ */
+export interface GalaxyScale {
+  /** Radius of a system's dot. */
+  dot: number
+  /** Radius of the faction ring around it. */
+  ring: number
+  /** Radius of its halo. */
+  glow: number
+  /** Stroke unit. */
+  k: number
+  /** Label font size. */
+  font: number
+}
+
+/** The sizes {@link renderGalaxy} uses for a given view. */
+export function galaxyScale(view: ViewBox): GalaxyScale {
+  const span = Math.max(view.w, view.h)
+  return {
+    dot: span * 0.004,
+    ring: span * 0.011,
+    glow: span * 0.022,
+    k: span * 0.0005,
+    font: span * 0.0133,
+  }
+}
+
 /** One star of the decorative backdrop. */
 export interface BackdropStar {
   x: number

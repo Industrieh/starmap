@@ -18,6 +18,7 @@ export const toc: readonly TocEntry[] = [
   { id: 'querying', title: 'Querying', depth: 2 },
   { id: 'indexGalaxy', title: 'indexGalaxy', depth: 3 },
   { id: 'indexSystems', title: 'indexSystems', depth: 3 },
+  { id: 'indexNetwork', title: 'indexNetwork', depth: 3 },
   { id: 'systemOf', title: 'systemOf', depth: 3 },
   { id: 'lanesOf', title: 'lanesOf', depth: 3 },
   { id: 'neighboursOf', title: 'neighboursOf', depth: 3 },
@@ -63,7 +64,8 @@ export default function Content(): JSX.Element {
         summary={
           <>
             The entry point. Takes your description, fills in what can be computed, checks the
-            result, and returns a complete <C>Galaxy</C>.
+            result, and returns a complete <C>Galaxy</C> — one that shares no object or array with
+            your input, so changing the description afterwards never changes the galaxy.
           </>
         }
         params={[
@@ -72,7 +74,8 @@ export default function Content(): JSX.Element {
             type: 'GalaxyInput',
             description: (
               <>
-                At minimum <C>{`{ systems: [...] }`}</C>. Not mutated.
+                At minimum <C>{`{ systems: [...] }`}</C>. Never mutated, and every object and array
+                in it is copied rather than shared.
               </>
             ),
           },
@@ -82,7 +85,8 @@ export default function Content(): JSX.Element {
             description: (
               <>
                 Set to <C>false</C> to skip the check. Only on a hot path whose input you have
-                already validated.
+                already validated: without it, a malformed description comes back as a malformed
+                galaxy.
               </>
             ),
           },
@@ -94,9 +98,12 @@ export default function Content(): JSX.Element {
         }
         throws={
           <>
-            <C>GalaxyValidationError</C> when the finished galaxy is inconsistent —{' '}
-            <C>error.issues</C> holds every problem, not just the first. <C>TypeError</C> if{' '}
-            <C>input</C> is not an object with a <C>systems</C> array.
+            <C>GalaxyValidationError</C> when the description or the finished galaxy is wrong — a
+            duplicate id, a dangling reference, a value out of range, or an entry of the wrong shape
+            (a planet that is not an object, <C>planets</C> that is not an array, a missing star…).{' '}
+            <C>error.issues</C> holds every problem with its path, not just the first. The only{' '}
+            <C>TypeError</C> left is for an <C>input</C> that is not an object with a <C>systems</C>{' '}
+            array at all.
           </>
         }
         example={`const galaxy = createGalaxy({
@@ -115,11 +122,13 @@ galaxy.lanes[0].length      // 449.44      — derived from the positions`}
         id="FORMAT_VERSION"
         name="FORMAT_VERSION"
         kind="constant"
-        signature={`const FORMAT_VERSION: number   // currently 2`}
+        signature={`const FORMAT_VERSION = 2   // a literal type: it changes when the contract does`}
         summary={
           <>
             The version of the data contract. Copied into <C>meta.formatVersion</C> at build time,
-            and bumped on every breaking change to the shape.
+            and bumped on every breaking change to the shape. <C>validateGalaxy()</C> reports a
+            galaxy built for another format as such — one issue on <C>meta.formatVersion</C>, and
+            nothing else checked.
           </>
         }
         example={`if (save.meta.formatVersion !== FORMAT_VERSION) {
@@ -133,18 +142,26 @@ galaxy.lanes[0].length      // 449.44      — derived from the positions`}
         id="validateGalaxy"
         name="validateGalaxy"
         kind="function"
-        signature={`function validateGalaxy(galaxy: Galaxy): GalaxyIssue[]`}
+        signature={`function validateGalaxy(galaxy: unknown): GalaxyIssue[]`}
         summary={
           <>
             Check a galaxy and return its problems. <strong>Never throws</strong>, whatever you pass
-            it — which is what makes it the right tool for data read back from disk.
+            it — which is what makes it the right tool for data read back from disk, and why it
+            takes <C>unknown</C>: hand it <C>JSON.parse()</C> straight away, no cast.
           </>
         }
         params={[
           {
             name: 'galaxy',
-            type: 'Galaxy',
-            description: 'Anything, really. A malformed value is reported, not thrown.',
+            type: 'unknown',
+            description: (
+              <>
+                Anything, really. A malformed value is reported, not thrown. A galaxy whose{' '}
+                <C>meta.formatVersion</C> is not <C>FORMAT_VERSION</C> gets exactly one issue —{' '}
+                <C>built for format 1, but this library reads format 2 — migrate it first</C> — and
+                nothing else is checked: its shape belongs to another contract.
+              </>
+            ),
           },
         ]}
         returns={
@@ -153,8 +170,8 @@ galaxy.lanes[0].length      // 449.44      — derived from the positions`}
             locates the value, e.g. <C>systems[3].planets[0].orbit</C>.
           </>
         }
-        example={`const galaxy = JSON.parse(json) as Galaxy
-const issues = validateGalaxy(galaxy)
+        example={`const data: unknown = JSON.parse(json)
+const issues = validateGalaxy(data)
 
 if (issues.length) {
   console.error(issues.map((i) => \`\${i.path}: \${i.message}\`).join('\\n'))
@@ -165,11 +182,12 @@ if (issues.length) {
         id="assertValidGalaxy"
         name="assertValidGalaxy"
         kind="function"
-        signature={`function assertValidGalaxy(galaxy: Galaxy): void`}
+        signature={`function assertValidGalaxy(galaxy: unknown): asserts galaxy is Galaxy`}
         summary={
           <>
-            The throwing form of <C>validateGalaxy()</C>. This is what <C>createGalaxy()</C> calls
-            internally.
+            The throwing form of <C>validateGalaxy()</C>, and what <C>createGalaxy()</C> calls
+            internally. Once it returns, TypeScript knows the value is a <C>Galaxy</C> — no cast
+            anywhere.
           </>
         }
         throws={
@@ -177,6 +195,9 @@ if (issues.length) {
             <C>GalaxyValidationError</C> if there is at least one issue.
           </>
         }
+        example={`const data: unknown = JSON.parse(json)
+assertValidGalaxy(data)
+data.systems   // typed: data is a Galaxy from here on`}
       />
 
       <ApiEntry
@@ -247,6 +268,35 @@ if (entry?.kind === 'station') entry.obj.docks   // typed as Station`}
       />
 
       <ApiEntry
+        id="indexNetwork"
+        name="indexNetwork"
+        kind="function"
+        signature={`function indexNetwork(galaxy: Galaxy): HyperlaneNetwork
+
+interface HyperlaneNetwork {
+  readonly systems: SystemsById                                // id → system
+  readonly lanes: ReadonlyMap<string, readonly Hyperlane[]>   // system id → its lanes
+}`}
+        summary={
+          <>
+            Index the hyperlane network for traversal: every system, and the lanes touching each
+            one, both in the galaxy&apos;s order. <C>findRoute()</C>, <C>neighboursOf()</C>,{' '}
+            <C>lanesOf()</C> and <C>connectedComponents()</C> all accept it in place of the galaxy.
+          </>
+        }
+        example={`const network = indexNetwork(galaxy)   // once, after createGalaxy()
+
+findRoute(network, 'sol', 'vega')      // no rescan of the galaxy
+neighboursOf(network, 'sol')`}
+      >
+        <Callout tone="tip" title="Each network helper builds it anyway">
+          Handed a <C>Galaxy</C>, every one of them indexes the network first. Build it yourself
+          when you query often — a route per ship, a neighbour list per frame — and that work
+          happens once.
+        </Callout>
+      </ApiEntry>
+
+      <ApiEntry
         id="systemOf"
         name="systemOf"
         kind="function"
@@ -287,19 +337,26 @@ systemOf(index, 'ghost')            // null`}
         id="lanesOf"
         name="lanesOf"
         kind="function"
-        signature={`function lanesOf(galaxy: Galaxy, systemId: string): Hyperlane[]`}
-        summary="Every hyperlane that touches a system, in either direction."
+        signature={`function lanesOf(
+  source: Galaxy | HyperlaneNetwork,
+  systemId: string,
+): Hyperlane[]`}
+        summary="Every hyperlane that touches a system, in either direction. Pass the network from indexNetwork() to skip the scan."
       />
 
       <ApiEntry
         id="neighboursOf"
         name="neighboursOf"
         kind="function"
-        signature={`function neighboursOf(galaxy: Galaxy, systemId: string): StarSystem[]`}
+        signature={`function neighboursOf(
+  source: Galaxy | HyperlaneNetwork,
+  systemId: string,
+): StarSystem[]`}
         summary={
           <>
             Systems reachable in one jump. There is no guarantee there are any — your network
-            decides.
+            decides. Handed a <C>Galaxy</C> it indexes the network first; in a loop, pass the
+            network.
           </>
         }
       />
@@ -317,7 +374,7 @@ systemOf(index, 'ghost')            // null`}
         name="findRoute"
         kind="function"
         signature={`function findRoute(
-  galaxy: Galaxy,
+  source: Galaxy | HyperlaneNetwork,
   fromId: string,
   toId: string,
 ): Route | null`}
@@ -340,8 +397,10 @@ systemOf(index, 'ghost')            // null`}
 findRoute(galaxy, 'a', 'island')   // null — the network is split`}
       >
         <Callout tone="note" title="Complexity">
-          Dijkstra with a linear-scan priority queue. Fine to a few thousand systems; past that,
-          index the graph once and swap in a binary heap.
+          Dijkstra with a binary heap: <C>O((V + E) log V)</C>. Among equally short routes, the one
+          returned is always the same — ties are broken by the systems&apos; order in the galaxy.
+          For many routes, pass the network from <C>indexNetwork()</C> so the graph is not rebuilt
+          on every call.
         </Callout>
       </ApiEntry>
 
@@ -349,7 +408,7 @@ findRoute(galaxy, 'a', 'island')   // null — the network is split`}
         id="connectedComponents"
         name="connectedComponents"
         kind="function"
-        signature={`function connectedComponents(galaxy: Galaxy): string[][]`}
+        signature={`function connectedComponents(source: Galaxy | HyperlaneNetwork): string[][]`}
         summary="Split the network into groups of systems that can reach each other."
         returns={
           <>
@@ -466,9 +525,10 @@ interface Rng {
   next(): number
   rand(min: number, max: number): number
   randInt(min: number, max: number): number
-  pick<T>(arr: readonly T[]): T
+  pick<T>(arr: readonly T[]): T                                // RangeError on []
   chance(p: number): boolean
-  weighted<T extends { w: number }>(table: readonly T[]): T
+  weighted<T extends { w: number }>(table: readonly T[]): T  // RangeError, see below
+  fork(label: string): Rng
 }`}
         summary={
           <>
@@ -482,8 +542,23 @@ rng.next()                 // 0.721389…   float in [0, 1)
 rng.randInt(1, 6)          // 4 — both bounds included
 rng.pick(['a', 'b', 'c'])  // 'a'
 rng.chance(0.5)            // true
-rng.weighted([{ w: 9, id: 'common' }, { w: 1, id: 'rare' }])`}
+rng.weighted([{ w: 9, id: 'common' }, { w: 1, id: 'rare' }])
+
+const loot = rng.fork('loot')   // exactly createRng('my-game-001:loot')
+loot.chance(0.1)                // draws from its own sequence — rng does not move`}
       >
+        <Callout tone="note" title="Misuse throws instead of returning nonsense">
+          <C>pick([])</C> throws a <C>RangeError</C> — there is nothing to pick. So does{' '}
+          <C>weighted()</C> on an empty table, on a negative or non-finite weight, and when no
+          weight is positive: nothing could ever be picked, and returning the first entry would hide
+          the bug.
+        </Callout>
+        <Callout tone="tip" title="One fork per mechanic">
+          <C>fork(label)</C> derives a generator from the seed and the label — never from the
+          parent&apos;s state — so the same label always gives the same sequence, however many draws
+          came before. Forks nest: <C>rng.fork(&apos;sol&apos;).fork(&apos;loot&apos;)</C> is{' '}
+          <C>createRng(&apos;my-game-001:sol:loot&apos;)</C>.
+        </Callout>
         <Callout tone="danger" title="Not cryptographic">
           mulberry32 is a content generator. Never use it for tokens, keys, or anything an adversary
           benefits from predicting.
@@ -499,7 +574,7 @@ function mulberry32(a: number): () => number   // the raw generator`}
         summary={
           <>
             The two primitives underneath. <C>createRng(seed)</C> is exactly{' '}
-            <C>mulberry32(hashSeed(seed))</C> plus the six conveniences.
+            <C>mulberry32(hashSeed(seed))</C> wrapped in the conveniences above.
           </>
         }
         example={`hashSeed('sol')       // 3795205537
@@ -573,6 +648,16 @@ next()                // 0.601104…`}
             name: 'GalaxyIndex, SystemsById',
             type: 'query',
             description: 'The two ReadonlyMaps the index helpers return.',
+          },
+          {
+            name: 'HyperlaneNetwork',
+            type: 'query',
+            description: (
+              <>
+                <C>{`{ systems, lanes }`}</C> — what <C>indexNetwork()</C> returns, and what the
+                network helpers accept in place of a galaxy.
+              </>
+            ),
           },
           {
             name: 'Route',

@@ -13,12 +13,18 @@
  *
  * Structural and referential integrity:
  *
- * - runtime types (`x` really is a finite number, `name` a non-empty string);
- * - ids are unique across the whole galaxy, hyperlanes included;
+ * - the format: a galaxy built for another `FORMAT_VERSION` is reported as such,
+ *   and nothing else is checked — migrate it first;
+ * - runtime types (`x` really is a finite number, `name` a non-empty string, a
+ *   planet an object, a collection an array);
+ * - ids are unique across the whole galaxy — local routes and hyperlanes
+ *   included;
  * - documented ranges: `security` and `density` in `[0, 1]`, `arcSweep` in
  *   `[0, 360]`, radii and orbits strictly positive;
  * - every reference by id resolves to an object that exists and has the right
  *   kind;
+ * - a link never loops back: no hyperlane from a system to itself, no local
+ *   route from an object to itself, no gate reaching its own system;
  * - the counters in `meta` match the real contents.
  *
  * ## What is not checked
@@ -32,7 +38,8 @@
  * system is an error.
  */
 
-import type { AsteroidField, Galaxy, ObjectKind, ObjectRef, StarSystem } from './types'
+import { FORMAT_VERSION } from './format'
+import type { AsteroidField, Galaxy, Hyperlane, ObjectKind, ObjectRef, StarSystem } from './types'
 
 /** One problem, located by its path in the structure. */
 export interface GalaxyIssue {
@@ -58,31 +65,46 @@ const OBJECT_KINDS = new Set<ObjectKind>(['system', 'star', 'planet', 'station',
 
 /**
  * Check a galaxy and return the list of its problems, empty if there are none.
- * Never throws, whatever you pass it.
+ * Never throws, whatever you pass it — which is why it takes `unknown`: hand it
+ * `JSON.parse(...)` straight away.
  *
  * @example Loading a save file
  * ```ts
- * const galaxy = JSON.parse(json) as Galaxy
- * const issues = validateGalaxy(galaxy)
+ * const data: unknown = JSON.parse(json)
+ * const issues = validateGalaxy(data)
  * if (issues.length) console.error(issues)
  * ```
  */
-export function validateGalaxy(galaxy: Galaxy): GalaxyIssue[] {
+export function validateGalaxy(galaxy: unknown): GalaxyIssue[] {
   const issues: GalaxyIssue[] = []
   const add: Add = (path, message) => void issues.push({ path, message })
 
-  if (!galaxy || typeof galaxy !== 'object') {
+  if (!isObject(galaxy)) {
     add('', 'expected an object')
     return issues
   }
-  if (!Array.isArray(galaxy.systems)) {
+  const g = galaxy as Partial<Galaxy>
+
+  // --- 0. The format. A galaxy built for another version of the contract is
+  //        expected to break every rule below, and listing those breaks would
+  //        only bury the one message that matters.
+  const version: unknown = isObject(g.meta) ? g.meta.formatVersion : undefined
+  if (typeof version === 'number' && Number.isFinite(version) && version !== FORMAT_VERSION) {
+    add(
+      'meta.formatVersion',
+      `built for format ${version}, but this library reads format ${FORMAT_VERSION} — migrate it first`,
+    )
+    return issues
+  }
+
+  if (!Array.isArray(g.systems)) {
     add('systems', 'expected an array')
     return issues
   }
-  if (!Array.isArray(galaxy.lanes)) {
-    add('lanes', 'expected an array')
-    return issues
-  }
+  const systems: readonly StarSystem[] = g.systems
+  let lanes: readonly Hyperlane[] = []
+  if (Array.isArray(g.lanes)) lanes = g.lanes
+  else add('lanes', 'expected an array')
 
   // --- 1. Index every object, reporting duplicate ids along the way. The index
   //        is what later steps use to resolve references by id.
@@ -93,41 +115,47 @@ export function validateGalaxy(galaxy: Galaxy): GalaxyIssue[] {
     else owners.set(id, { kind, systemId })
   }
 
-  galaxy.systems.forEach((s, i) => {
+  systems.forEach((s, i) => {
     const p = `systems[${i}]`
-    if (!s || typeof s !== 'object') return add(p, 'expected an object')
+    if (!isObject(s)) return add(p, 'expected an object')
     claim(p, s.id, 'system', s.id)
-    if (s.star && typeof s.star === 'object') claim(`${p}.star`, s.star.id, 'star', s.id)
+    if (isObject(s.star)) claim(`${p}.star`, s.star.id, 'star', s.id)
     each(s.planets).forEach((pl, j) => {
-      claim(`${p}.planets[${j}]`, pl?.id, 'planet', s.id)
-      each(pl?.stations).forEach((st, k) => {
-        claim(`${p}.planets[${j}].stations[${k}]`, st?.id, 'station', s.id)
+      if (!isObject(pl)) return
+      claim(`${p}.planets[${j}]`, pl.id, 'planet', s.id)
+      each(pl.stations).forEach((st, k) => {
+        if (isObject(st)) claim(`${p}.planets[${j}].stations[${k}]`, st.id, 'station', s.id)
       })
     })
-    each(s.gates).forEach((g, j) => claim(`${p}.gates[${j}]`, g?.id, 'gate', s.id))
+    each(s.gates).forEach((gate, j) => {
+      if (isObject(gate)) claim(`${p}.gates[${j}]`, gate.id, 'gate', s.id)
+    })
     each(s.asteroidFields).forEach((f, j) => {
-      claim(`${p}.asteroidFields[${j}]`, f?.id, 'field', s.id)
+      if (isObject(f)) claim(`${p}.asteroidFields[${j}]`, f.id, 'field', s.id)
     })
   })
 
+  // Local routes and hyperlanes carry ids that count towards global
+  // uniqueness but are not referenceable objects, so they stay out of
+  // `owners` — otherwise a gate could "reach" a hyperlane.
+  const links = new Set<string>()
+  const claimLink: ClaimLink = (path, id) => {
+    if (!isId(id)) return add(`${path}.id`, 'missing or empty id')
+    if (owners.has(id) || links.has(id)) add(`${path}.id`, `duplicate id: "${id}"`)
+    else links.add(id)
+  }
+
   // --- 2. Contents of each system.
-  galaxy.systems.forEach((s, i) => {
-    if (!s || typeof s !== 'object') return
-    checkSystem(s, `systems[${i}]`, owners, add)
+  systems.forEach((s, i) => {
+    if (isObject(s)) checkSystem(s, `systems[${i}]`, owners, add, claimLink)
   })
 
-  // --- 3. The inter-system network. Hyperlane ids count towards global
-  //        uniqueness but are not referenceable objects, so they stay out of
-  //        `owners` — otherwise a gate could "reach" a hyperlane.
-  const laneIds = new Set<string>()
+  // --- 3. The inter-system network.
   const seenPairs = new Set<string>()
-  galaxy.lanes.forEach((l, i) => {
+  lanes.forEach((l, i) => {
     const p = `lanes[${i}]`
-    if (!l || typeof l !== 'object') return add(p, 'expected an object')
-    if (!isId(l.id)) add(`${p}.id`, 'missing or empty id')
-    else if (owners.has(l.id) || laneIds.has(l.id)) {
-      add(`${p}.id`, `duplicate id: "${l.id}"`)
-    } else laneIds.add(l.id)
+    if (!isObject(l)) return add(p, 'expected an object')
+    claimLink(p, l.id)
 
     for (const end of ['from', 'to'] as const) {
       const ref = l[end]
@@ -137,34 +165,85 @@ export function validateGalaxy(galaxy: Galaxy): GalaxyIssue[] {
     }
     if (l.from === l.to) add(p, 'a hyperlane cannot link a system to itself')
 
-    const pair = [l.from, l.to].toSorted().join('|')
-    if (seenPairs.has(pair)) add(p, `these two systems are already linked: ${pair}`)
+    // Undirected: the pair is the same whichever end comes first. JSON keeps the
+    // key unambiguous whatever characters the ids contain.
+    const [from, to] = [String(l.from), String(l.to)]
+    const [a, b] = from < to ? [from, to] : [to, from]
+    const pair = JSON.stringify([a, b])
+    if (seenPairs.has(pair)) add(p, `these two systems are already linked: "${a}" and "${b}"`)
     else seenPairs.add(pair)
 
     number(`${p}.length`, l.length, add, { min: 0 })
   })
 
   // --- 4. Metadata.
-  checkMeta(galaxy, add)
+  checkMeta(g, systems, lanes, add)
 
   return issues
 }
 
-/** Same as {@link validateGalaxy}, but throws a {@link GalaxyValidationError}. */
-export function assertValidGalaxy(galaxy: Galaxy): void {
+/**
+ * Same as {@link validateGalaxy}, but throws a {@link GalaxyValidationError}.
+ * Once it returns, TypeScript knows the value is a `Galaxy`.
+ *
+ * @example
+ * ```ts
+ * const data: unknown = JSON.parse(json)
+ * assertValidGalaxy(data)
+ * data.systems   // typed: data is a Galaxy from here on
+ * ```
+ */
+export function assertValidGalaxy(galaxy: unknown): asserts galaxy is Galaxy {
   const issues = validateGalaxy(galaxy)
   if (issues.length) throw new GalaxyValidationError(issues)
+}
+
+/** The counters of {@link GalaxyMeta}, as computed from the contents. */
+export interface ContentCounts {
+  systemCount: number
+  laneCount: number
+  planetCount: number
+  stationCount: number
+  gateCount: number
+  asteroidFieldCount: number
+}
+
+/**
+ * Count what a galaxy holds. `createGalaxy()` writes these counters and
+ * `validateGalaxy()` checks them, both through this one function — so the two
+ * can never disagree, malformed entries included.
+ *
+ * @internal Not part of the public API.
+ */
+export function countContents(
+  systems: readonly StarSystem[],
+  lanes: readonly Hyperlane[],
+): ContentCounts {
+  const planets = systems.flatMap((s) => each(s?.planets))
+  return {
+    systemCount: systems.length,
+    laneCount: each(lanes).length,
+    planetCount: planets.length,
+    stationCount: planets.reduce((n, p) => n + each(p?.stations).length, 0),
+    gateCount: systems.reduce((n, s) => n + each(s?.gates).length, 0),
+    asteroidFieldCount: systems.reduce((n, s) => n + each(s?.asteroidFields).length, 0),
+  }
 }
 
 // ---------------------------------------------------------------- internals
 
 type Add = (path: string, message: string) => void
+type ClaimLink = (path: string, id: unknown) => void
 type Owners = ReadonlyMap<string, { kind: ObjectKind; systemId: string }>
 
 const isId = (v: unknown): v is string => typeof v === 'string' && v.length > 0
 
-/** Tolerates `undefined` and non-arrays: the mistake is reported elsewhere. */
-function each<T>(v: T[] | undefined): T[] {
+/** A plain object: not `null`, and not an array where an object was expected. */
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
+
+/** Tolerates `undefined`, `null` and non-arrays: the mistake is reported elsewhere. */
+function each<T>(v: readonly T[] | null | undefined): readonly T[] {
   return Array.isArray(v) ? v : []
 }
 
@@ -190,18 +269,27 @@ function text(path: string, v: unknown, add: Add): void {
   if (typeof v !== 'string' || v.length === 0) add(path, 'expected a non-empty string')
 }
 
-function checkSystem(s: StarSystem, p: string, owners: Owners, add: Add): void {
+function checkSystem(
+  s: StarSystem,
+  p: string,
+  owners: Owners,
+  add: Add,
+  claimLink: ClaimLink,
+): void {
   text(`${p}.name`, s.name, add)
   number(`${p}.x`, s.x, add)
   number(`${p}.y`, s.y, add)
   number(`${p}.outerLimit`, s.outerLimit, add, { min: 0 })
   optionalNumber(`${p}.security`, s.security, add, { min: 0, max: 1 })
   if (s.faction !== undefined) {
-    text(`${p}.faction.id`, s.faction?.id, add)
-    text(`${p}.faction.name`, s.faction?.name, add)
+    if (!isObject(s.faction)) add(`${p}.faction`, 'expected an object')
+    else {
+      text(`${p}.faction.id`, s.faction.id, add)
+      text(`${p}.faction.name`, s.faction.name, add)
+    }
   }
 
-  if (!s.star || typeof s.star !== 'object') add(`${p}.star`, 'missing star')
+  if (!isObject(s.star)) add(`${p}.star`, 'missing star')
   else {
     text(`${p}.star.name`, s.star.name, add)
     number(`${p}.star.radius`, s.star.radius, add, { positive: true })
@@ -213,7 +301,7 @@ function checkSystem(s: StarSystem, p: string, owners: Owners, add: Add): void {
 
   each(s.planets).forEach((pl, j) => {
     const pp = `${p}.planets[${j}]`
-    if (!pl || typeof pl !== 'object') return add(pp, 'expected an object')
+    if (!isObject(pl)) return add(pp, 'expected an object')
     text(`${pp}.name`, pl.name, add)
     number(`${pp}.index`, pl.index, add, { min: 0 })
     if (pl.index !== j) add(`${pp}.index`, `must be ${j}, its rank in the array`)
@@ -226,7 +314,7 @@ function checkSystem(s: StarSystem, p: string, owners: Owners, add: Add): void {
     if (!Array.isArray(pl.stations)) return add(`${pp}.stations`, 'expected an array')
     pl.stations.forEach((st, k) => {
       const sp = `${pp}.stations[${k}]`
-      if (!st || typeof st !== 'object') return add(sp, 'expected an object')
+      if (!isObject(st)) return add(sp, 'expected an object')
       text(`${sp}.name`, st.name, add)
       number(`${sp}.orbit`, st.orbit, add, { positive: true })
       number(`${sp}.angle`, st.angle, add)
@@ -240,7 +328,7 @@ function checkSystem(s: StarSystem, p: string, owners: Owners, add: Add): void {
 
   each(s.gates).forEach((g, j) => {
     const gp = `${p}.gates[${j}]`
-    if (!g || typeof g !== 'object') return add(gp, 'expected an object')
+    if (!isObject(g)) return add(gp, 'expected an object')
     text(`${gp}.name`, g.name, add)
     number(`${gp}.orbit`, g.orbit, add, { positive: true })
     number(`${gp}.angle`, g.angle, add)
@@ -258,14 +346,18 @@ function checkSystem(s: StarSystem, p: string, owners: Owners, add: Add): void {
 
   each(s.localRoutes).forEach((r, j) => {
     const rp = `${p}.localRoutes[${j}]`
-    if (!r || typeof r !== 'object') return add(rp, 'expected an object')
-    if (!isId(r.id)) add(`${rp}.id`, 'missing or empty id')
+    if (!isObject(r)) return add(rp, 'expected an object')
+    claimLink(rp, r.id)
     for (const end of ['from', 'to'] as const) checkRef(r[end], `${rp}.${end}`, s.id, owners, add)
+    // Ids are unique across the galaxy, so one id on both ends is one object.
+    if (isObject(r.from) && isObject(r.to) && isId(r.from.id) && r.from.id === r.to.id) {
+      add(rp, 'a local route cannot link an object to itself')
+    }
   })
 }
 
 function checkField(f: AsteroidField, p: string, add: Add): void {
-  if (!f || typeof f !== 'object') return add(p, 'expected an object')
+  if (!isObject(f)) return add(p, 'expected an object')
   text(`${p}.name`, f.name, add)
   optionalNumber(`${p}.density`, f.density, add, { min: 0, max: 1 })
 
@@ -291,7 +383,7 @@ function checkField(f: AsteroidField, p: string, add: Add): void {
 }
 
 function checkRef(ref: ObjectRef, p: string, systemId: string, owners: Owners, add: Add): void {
-  if (!ref || typeof ref !== 'object') return add(p, 'expected a { kind, id } reference')
+  if (!isObject(ref)) return add(p, 'expected a { kind, id } reference')
   if (!OBJECT_KINDS.has(ref.kind)) {
     return add(`${p}.kind`, `unknown kind: "${String(ref.kind)}"`)
   }
@@ -305,21 +397,18 @@ function checkRef(ref: ObjectRef, p: string, systemId: string, owners: Owners, a
   }
 }
 
-function checkMeta(galaxy: Galaxy, add: Add): void {
+function checkMeta(
+  galaxy: Partial<Galaxy>,
+  systems: readonly StarSystem[],
+  lanes: readonly Hyperlane[],
+  add: Add,
+): void {
   const { meta } = galaxy
-  if (!meta || typeof meta !== 'object') return add('meta', 'missing metadata')
+  if (!isObject(meta)) return add('meta', 'missing metadata')
 
-  const planets = galaxy.systems.flatMap((s) => each(s.planets))
-  const expected = {
-    systemCount: galaxy.systems.length,
-    laneCount: galaxy.lanes.length,
-    planetCount: planets.length,
-    stationCount: planets.reduce((n, p) => n + each(p?.stations).length, 0),
-    gateCount: galaxy.systems.reduce((n, s) => n + each(s.gates).length, 0),
-    asteroidFieldCount: galaxy.systems.reduce((n, s) => n + each(s.asteroidFields).length, 0),
-  }
+  const expected = countContents(systems, lanes)
   for (const [key, value] of Object.entries(expected)) {
-    if (meta[key as keyof typeof expected] !== value) {
+    if (meta[key as keyof ContentCounts] !== value) {
       add(`meta.${key}`, `does not match the contents: expected ${value}`)
     }
   }

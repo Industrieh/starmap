@@ -5,29 +5,30 @@
  * it looks. Everything about where you are and what you clicked lives one level
  * down, in `Explorer`.
  *
- * The `key` on `<Explorer>` is the interesting line. Generating a new galaxy
- * invalidates every id the explorer is holding — the ship's location, the
+ * The `key` on `<ErrorBoundary>` is the interesting line. Generating a new
+ * galaxy invalidates every id the explorer is holding — the ship's location, the
  * selection — and React's answer to "this state no longer applies" is to give
  * the component a new identity. A changed `key` throws the old state away and
- * mounts a fresh one, which is exactly what a new galaxy means.
+ * mounts a fresh one, which is exactly what a new galaxy means. It resets the
+ * boundary too: a galaxy that failed to build does not stay on screen once you
+ * ask for another one.
  */
 
 import { useMemo, useState, type JSX } from 'react'
 
+import { ErrorBoundary } from './ErrorBoundary'
 import { Explorer } from './Explorer'
 import { THEMES, type ThemeName } from './themes'
-import { generateGalaxy } from './universe/generate'
+import { clampSystemCount, generateGalaxy, SYSTEM_COUNT } from './universe/generate'
 import { Toolbar } from './views/Toolbar'
 
 export function App(): JSX.Element {
-  const [{ seed, systemCount }, setUniverse] = useState({ seed: 'orion-7', systemCount: 14 })
+  const [{ seed, systemCount }, setUniverse] = useState({
+    seed: 'orion-7',
+    systemCount: SYSTEM_COUNT.default,
+  })
   const [themeName, setThemeName] = useState<ThemeName>('dark')
   const [backdrop, setBackdrop] = useState(true)
-
-  // Generating is cheap — a few milliseconds — but it is not free, and it must
-  // not run on every re-render: the drawing depends on `t`, which changes sixty
-  // times a second.
-  const galaxy = useMemo(() => generateGalaxy(seed, systemCount), [seed, systemCount])
 
   // Four rows, two columns: the toolbar, the status line and the meta line each
   // span both, which leaves the drawing and the inspector side by side on the
@@ -45,19 +46,44 @@ export function App(): JSX.Element {
         systemCount={systemCount}
         themeName={themeName}
         backdrop={backdrop}
+        // Clamped here as well as in the toolbar: this is the only way into
+        // the state, so no count outside the generator's range can get past it.
         onGenerate={(nextSeed, nextCount) =>
-          setUniverse({ seed: nextSeed, systemCount: nextCount })
+          setUniverse({ seed: nextSeed, systemCount: clampSystemCount(nextCount) })
         }
         onTheme={setThemeName}
         onBackdrop={setBackdrop}
       />
 
-      <Explorer
-        key={`${seed}:${systemCount}`}
-        galaxy={galaxy}
-        theme={THEMES[themeName]}
-        backdrop={backdrop}
-      />
+      <ErrorBoundary key={`${seed}:${systemCount}`}>
+        <Universe seed={seed} systemCount={systemCount} theme={themeName} backdrop={backdrop} />
+      </ErrorBoundary>
+    </main>
+  )
+}
+
+interface UniverseProps {
+  seed: string
+  systemCount: number
+  theme: ThemeName
+  backdrop: boolean
+}
+
+/**
+ * The galaxy, and everything drawn from it.
+ *
+ * Generating happens here rather than in `App` so that it happens *inside* the
+ * error boundary: when `createGalaxy()` rejects what the generator built, the
+ * boundary catches it and shows the problems instead of a blank page.
+ */
+function Universe({ seed, systemCount, theme, backdrop }: UniverseProps): JSX.Element {
+  // Generating takes a few milliseconds — not free, and nothing to redo when
+  // only the theme or the backdrop changes, which re-render this component.
+  const galaxy = useMemo(() => generateGalaxy(seed, systemCount), [seed, systemCount])
+
+  return (
+    <>
+      <Explorer galaxy={galaxy} theme={THEMES[theme]} backdrop={backdrop} />
 
       <footer className="col-span-full flex justify-between gap-3 text-xs text-muted">
         <span>
@@ -68,6 +94,6 @@ export function App(): JSX.Element {
           seed “{galaxy.meta.seed}” · format v{galaxy.meta.formatVersion}
         </span>
       </footer>
-    </main>
+    </>
   )
 }

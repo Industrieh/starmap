@@ -101,20 +101,22 @@ const [sol] = galaxy.systems
 // `t` is simulation time in seconds. Nothing keeps a clock: pass the moment you
 // want and you get that moment.
 
-const system = renderSystem(sol, {
-  t: 0,
+const options = {
   width: 800,
   height: 800,
   title: `The ${sol.name} system`,
   // With the index, a gate label says where it leads: "Sol Gate → Vega".
   systems: indexSystems(galaxy),
-})
+}
+
+const system = renderSystem(sol, { ...options, t: 0 })
 
 // --- 3. Draw the same system, later ----------------------------------------
 // Earth's period is 24 s, so at t = 12 it is on the far side of its star — and
-// its station has followed it around.
+// its station has followed it around. Same options, another moment; the
+// `idPrefix` only keeps the two drawings' gradients apart if a page shows both.
 
-const later = renderSystem(sol, { t: 12, width: 800, height: 800, idPrefix: 'later' })
+const later = renderSystem(sol, { ...options, t: 12, idPrefix: 'later' })
 
 // --- 4. Draw the galaxy, with a route --------------------------------------
 // `highlight` takes an ordered list of system ids, which is exactly what

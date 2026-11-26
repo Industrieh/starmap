@@ -13,8 +13,8 @@
  *
  * **Adding a page** takes two edits: an entry in `LIBRARIES` (which creates the
  * route and the sidebar link) and an entry here (which fills it). A page missing
- * from this file still renders — it falls back to a marker naming the Markdown
- * it will draw from — so the two can be written out of step.
+ * from this file still renders — it falls back to a marker naming the module it
+ * belongs in — so the two can be written out of step.
  */
 
 import type { ComponentType } from 'react'

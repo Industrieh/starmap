@@ -1,5 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // `engines` promises Node 18, so `lib` is pinned to what Node 18 ships:
+    // ES2022. A newer built-in — `toSorted()` was the one that slipped through —
+    // then fails the typecheck instead of crashing on the oldest supported Node.
+    "lib": ["ES2022"]
+  },
   "include": ["src", "tests", "vitest.config.ts", "tsdown.config.ts"],
   "exclude": ["dist"]
 }

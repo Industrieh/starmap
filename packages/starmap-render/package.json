@@ -45,7 +45,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@industrieh/starmap": "workspace:*"
+    "@industrieh/starmap": "workspace:^"
   },
   "devDependencies": {
     "tsdown": "^0.22.14",
