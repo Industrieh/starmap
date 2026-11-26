@@ -10,26 +10,29 @@ bun run dev                  # from this folder — same thing
 ```
 
 Then open http://localhost:5173. The port is pinned with `strictPort`, so it
-never moves to the next free one — `examples/interactive-react` explains why
-that matters when [Claude drives Chrome](../interactive-react/README.md#look-at-it-in-chrome).
+never moves to the next free one: the READMEs, a browser agent or an end-to-end
+script can rely on the URL staying put.
 
 ## What you can do
 
-| in the app                      | what happens                                               |
-| ------------------------------- | ---------------------------------------------------------- |
-| type a seed, press **Generate** | a whole new galaxy — the same seed always rebuilds it      |
-| **Surprise me**                 | a random seed                                              |
-| move the pointer over a system  | the route from your ship to it lights up                   |
-| click anything                  | the inspector shows what it is                             |
-| double-click a system           | you fly there and go inside                                |
-| double-click a gate             | you take it to the system it leads to                      |
-| **← galaxy**, or `esc`          | back to the map                                            |
-| **⏸ ×1 ×4 ×16**, or `space`     | simulation speed                                           |
-| **☾ / ☀**                       | swaps both themes at once — the interface, and the drawing |
-| **✦ stars**                     | the decorative backdrop, off for a cleaner look            |
+| in the app                      | what happens                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------- |
+| type a seed, press **Generate** | a whole new galaxy — the same seed always rebuilds it                                       |
+| **systems**                     | how many, from 2 to 60 — anything else is brought back in                                   |
+| **Surprise me**                 | a random seed                                                                               |
+| move the pointer over a system  | the route from your ship to it lights up                                                    |
+| click anything                  | the inspector shows what it is                                                              |
+| double-click a system           | you fly there and go inside                                                                 |
+| double-click a gate             | you take it to the system it leads to                                                       |
+| **← galaxy**, or `esc`          | back to the map                                                                             |
+| **⏸ ×1 ×4 ×16**, or `space`     | simulation speed                                                                            |
+| **☾ / ☀**                       | swaps both themes at once — the interface, and the drawing                                  |
+| **✦ stars**                     | the decorative backdrop, off for a cleaner look                                             |
+| `tab` into the side panel       | the same moves without a mouse: pick a destination and fly, inspect any object, take a gate |
 
-The white ring on the map is your ship. Everything else — the dots, the lanes,
-the names, the colours — is drawn by `@industrieh/starmap-render`.
+The ring around one system on the map is your ship, drawn in the theme's label
+colour. Everything else — the dots, the lanes, the names, the colours — is drawn
+by `@industrieh/starmap-render`.
 
 ## Read it as a tutorial
 
@@ -42,12 +45,16 @@ you will have seen the whole loop, from a seed to a clickable map.
 | 2    | `src/themes.ts`            | where colours live, and why there are two kinds of theme                  |
 | 3    | `src/views/SvgStage.tsx`   | making a **string** clickable, with one listener                          |
 | 4    | `src/views/GalaxyView.tsx` | drawing the map, and **adding your own layer** to it                      |
-| 5    | `src/views/SystemView.tsx` | drawing a system at time `t`                                              |
+| 5    | `src/views/SystemView.tsx` | drawing a system at time `t`, redrawing only what moves                   |
 | 6    | `src/views/Details.tsx`    | turning an id back into an object, fully typed                            |
 | 7    | `src/Explorer.tsx`         | navigation state: where the ship is, what is selected                     |
 
-`src/App.tsx` is the shell around all of it — the seed, the theme, and one
-`key` that throws the navigation state away when the galaxy changes.
+`src/App.tsx` is the shell around all of it — the seed, the theme, an error
+boundary, and one `key` that throws the navigation state away when the galaxy
+changes. Two supporting files are worth a look once the tour is done:
+`src/hooks/clock.tsx`, which gets the time to the system drawing without
+re-rendering the rest of the app sixty times a second, and
+`src/views/Navigator.tsx`, which offers every pointer gesture as a button.
 
 ## The three pieces, and who does what
 
@@ -67,8 +74,10 @@ what a click does, how fast time runs — is in this folder.
 
 ## Things to try
 
-- Open `src/universe/generate.ts` and change `MIN_DISTANCE`, or the weights in
-  `STAR_CLASSES`, or the planet tables. Save, and look.
+- Open `src/universe/generate.ts` and change `SPREAD` (how roomy the galaxy
+  is), or the weights in `STAR_CLASSES`, or the planet tables. Save, and look.
+  `MIN_DISTANCE` is the galaxy's unit of length: changing it rescales
+  everything, so the map looks the same and only the distances move.
 - Add a field to the generated systems (`resources`, more stations) and show it
   in `src/views/Details.tsx`.
 - Change a colour in `src/themes.ts` — one key is enough, the rest of the table
@@ -76,7 +85,8 @@ what a click does, how fast time runs — is in this folder.
 - Draw your own layer: `GalaxyView.tsx` already adds one (the ship marker) with
   `el()` and `group()`, in world coordinates.
 - Break the generator on purpose — give a planet `orbit: -5`. `createGalaxy()`
-  throws a `GalaxyValidationError` listing every problem with its path.
+  throws a `GalaxyValidationError` listing every problem with its path, and the
+  app shows that list in place of the map.
 
 ## Notes
 
@@ -90,15 +100,22 @@ it, and everything about a session — where the ship is, what is selected — l
 in React state, keyed by the same ids. That is the pattern to keep in a real
 game, where the save file is your state and the galaxy is rebuilt from its seed.
 
-**The system view rebuilds its whole SVG string every frame.** Simple, and fine
-for a few dozen objects. For a bigger map, draw the layers once with
-`renderSystemContent()` and move the objects with `systemPositions()` — the
-recipe is in
-[`packages/starmap-render/docs/recipes.md`](../../packages/starmap-render/docs/recipes.md).
+**The system view redraws only what moves.** It asks the renderer for layers
+(`renderSystemContent()` with `layers`) and puts them in an `<svg>` of its own.
+The seven that never change — the gradients, the background, the backdrop, the
+orbits, the fields, the star and the gates — are drawn once per system and
+theme; only `routes` and `planets` are drawn every frame. That is about 17
+elements and 1 KB a frame instead of the whole drawing's 320 elements and 19 KB,
+four fifths of which is the decorative backdrop. And only that view pays even
+this: the clock lives in `src/hooks/clock.tsx`, so the map and the inspector do
+not re-render with time.
+
+**Routes read an index, not the galaxy.** `indexNetwork(galaxy)` is built once
+per galaxy, and every `findRoute()` and the connectivity check take it instead
+of the galaxy — so hovering a system costs one search, not a rebuild of the
+graph.
 
 ## Smaller examples
 
 - [`examples/basic`](../basic) — the core alone, in a terminal
 - [`examples/basic-svg-generation`](../basic-svg-generation) — SVG files, no browser
-- [`examples/interactive-react`](../interactive-react) — the same idea as this
-  one, in a hundred lines, if this app is too much to read at once

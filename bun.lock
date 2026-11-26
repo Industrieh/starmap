@@ -83,7 +83,7 @@
       "name": "@industrieh/starmap-render",
       "version": "0.1.0-beta.0",
       "dependencies": {
-        "@industrieh/starmap": "workspace:*",
+        "@industrieh/starmap": "workspace:^",
       },
       "devDependencies": {
         "tsdown": "^0.22.14",

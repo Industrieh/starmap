@@ -48,14 +48,11 @@ a game engine.
 bun add @industrieh/starmap
 ```
 
-Not on npm yet. Until then, install it from a path or from git:
+Nothing to install alongside it — no dependencies, no peer dependencies. It runs
+on Node 18 and later, Bun, Deno, browsers and workers.
 
-```bash
-bun add @industrieh/starmap@file:../starmap/packages/starmap
-bun add github:industrieh/starmap
-```
-
-Nothing to install alongside it — no dependencies, no peer dependencies.
+The package is in beta: until `1.0.0`, a minor version may change the API. Pin
+the exact version if that matters to you.
 
 ## What it does
 
@@ -183,7 +180,9 @@ try {
 
 It rejects anything that makes the universe **unusable**: a duplicate id, a lane
 pointing nowhere, a value out of range, a local route crossing into another
-system.
+system, an entry of the wrong shape. A description read from a JSON file gets
+the same treatment: every malformed entry is listed with its path, rather than
+the first `TypeError` the code would have tripped on.
 
 It accepts anything merely **implausible**: orbits that shrink outward,
 overlapping planets, a gate inside its star, a network split in two. Those are
@@ -239,8 +238,8 @@ id.
 ```ts
 import { systemPositions } from '@industrieh/starmap'
 
-const pos = systemPositions(galaxy.systems[0], 12.5)
-pos.get('earth') // { x: -75, y: 130 }
+const pos = systemPositions(galaxy.systems[0], 6)
+pos.get('earth') // { x: -75, y: 130 } — a quarter of its 24 s orbit
 pos.get('earth-st0') // the station, which follows its planet
 ```
 
@@ -335,31 +334,38 @@ mechanic its own sequence, so adding one does not disturb the others.
 
 ### Building and checking
 
-| function                        | what it does                                |
-| ------------------------------- | ------------------------------------------- |
-| `createGalaxy(input, options?)` | fill in, check, and return a `Galaxy`       |
-| `validateGalaxy(galaxy)`        | list the problems of a galaxy; never throws |
-| `assertValidGalaxy(galaxy)`     | same, but throws a `GalaxyValidationError`  |
-| `FORMAT_VERSION`                | version of the data contract                |
+| function                        | what it does                                                  |
+| ------------------------------- | ------------------------------------------------------------- |
+| `createGalaxy(input, options?)` | fill in, check, and return a `Galaxy`                         |
+| `validateGalaxy(value)`         | list the problems of anything; never throws                   |
+| `assertValidGalaxy(value)`      | same, but throws a `GalaxyValidationError` — and narrows type |
+| `FORMAT_VERSION`                | version of the data contract                                  |
 
 Pass `{ validate: false }` to skip the check on a hot path whose input you have
 already validated.
 
 `validateGalaxy()` is the one to reach for after `JSON.parse` — TypeScript's
-guarantees do not survive serialization.
+guarantees do not survive serialization. It takes `unknown`, so no cast is
+needed, and a galaxy built for another `FORMAT_VERSION` is reported as exactly
+that. After `assertValidGalaxy(data)`, TypeScript knows `data` is a `Galaxy`.
 
 ### Reading
 
-| function                      | what it does                             |
-| ----------------------------- | ---------------------------------------- |
-| `indexGalaxy(galaxy)`         | `id → object`, every kind mixed together |
-| `indexSystems(galaxy)`        | `id → system`                            |
-| `lanesOf(galaxy, id)`         | lanes touching a system                  |
-| `neighboursOf(galaxy, id)`    | systems one jump away                    |
-| `connectedComponents(galaxy)` | groups of mutually reachable systems     |
-| `stationsOf(system)`          | every station in a system                |
-| `systemOf(source, id)`        | the system an object belongs to          |
-| `findRoute(galaxy, a, b)`     | shortest weighted path (Dijkstra)        |
+| function                      | what it does                                   |
+| ----------------------------- | ---------------------------------------------- |
+| `indexGalaxy(galaxy)`         | `id → object`, every kind mixed together       |
+| `indexSystems(galaxy)`        | `id → system`                                  |
+| `indexNetwork(galaxy)`        | the hyperlane network, indexed for traversal   |
+| `lanesOf(source, id)`         | lanes touching a system                        |
+| `neighboursOf(source, id)`    | systems one jump away                          |
+| `connectedComponents(source)` | groups of mutually reachable systems           |
+| `stationsOf(system)`          | every station in a system                      |
+| `systemOf(source, id)`        | the system an object belongs to                |
+| `findRoute(source, a, b)`     | shortest weighted path (Dijkstra, binary heap) |
+
+The network helpers take the galaxy, or the result of `indexNetwork()` — build
+that once when you query the network often, a route per ship or a neighbour list
+per frame. `systemOf()` likewise takes the galaxy or an `indexGalaxy()` index.
 
 ### Geometry
 
@@ -372,9 +378,11 @@ guarantees do not survive serialization.
 
 ### Randomness
 
-`createRng(seed)` returns `next`, `rand`, `randInt`, `pick`, `chance` and
-`weighted`. Use it for your own generator, or for reproducible game content —
-loot, encounters, events.
+`createRng(seed)` returns `next`, `rand`, `randInt`, `pick`, `chance`,
+`weighted` and `fork`. Use it for your own generator, or for reproducible game
+content — loot, encounters, events. `rng.fork('loot')` gives a mechanic its own
+sequence, so adding a draw to one never shifts the others. Misuse is loud:
+`pick([])` and a weighted table with nothing to pick throw a `RangeError`.
 
 ### Units and conventions
 
@@ -443,11 +451,12 @@ packages/starmap/
       types.ts          the data contract (output)
       input.ts          the input schema
       create.ts         createGalaxy() and normalization
+      format.ts         FORMAT_VERSION
       validate.ts       validateGalaxy() and errors
       geometry.ts       orbital geometry
       query.ts          indexes, neighbours, connectivity, routes
       rng.ts            deterministic randomness
-  tests/                creation, validation, queries, purity
+  tests/                creation, validation, robustness, queries, rng, purity
   docs/                 data model, recipes, design, architecture
 ```
 

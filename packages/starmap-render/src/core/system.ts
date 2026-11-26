@@ -25,10 +25,49 @@ import {
   type Vec2,
 } from '@industrieh/starmap'
 
-import { arcPath, backdropStars, systemViewBox, SYSTEM_MARGIN, type ViewBox } from './geometry'
+import {
+  arcPath,
+  backdropStars,
+  systemScale,
+  systemViewBox,
+  SYSTEM_MARGIN,
+  type SystemScale,
+  type ViewBox,
+} from './geometry'
 import { svgDocument, type DocumentOptions } from './root'
-import { background, dash, el, group, num, text } from './svg'
+import { background, dash, el, group, idPrefixOf, num, text } from './svg'
 import { pickColor, pickRouteStyle, resolveTheme, type Theme, type ThemeInput } from './theme'
+
+/** The layers of a system drawing. */
+export type SystemLayer =
+  | 'defs'
+  | 'background'
+  | 'backdrop'
+  | 'orbits'
+  | 'fields'
+  | 'routes'
+  | 'star'
+  | 'planets'
+  | 'gates'
+
+/**
+ * Every layer of a system drawing, bottom to top — the order they are always
+ * drawn in.
+ *
+ * Only `routes` and `planets` (stations ride with their planet) depend on `t`.
+ * An animation can draw the others once and redraw just those two each frame.
+ */
+export const SYSTEM_LAYERS: readonly SystemLayer[] = [
+  'defs',
+  'background',
+  'backdrop',
+  'orbits',
+  'fields',
+  'routes',
+  'star',
+  'planets',
+  'gates',
+]
 
 /** Options of {@link renderSystem} and {@link renderSystemContent}. */
 export interface RenderSystemOptions extends DocumentOptions {
@@ -38,7 +77,11 @@ export interface RenderSystemOptions extends DocumentOptions {
    * @default 0
    */
   t?: number
-  /** Colours. Anything left out comes from `DEFAULT_THEME`. */
+  /**
+   * Colours. Anything left out comes from `DEFAULT_THEME`. A theme returned by
+   * `resolveTheme()` is used as is, with no merge — resolve it once when you
+   * render every frame.
+   */
   theme?: ThemeInput
   /**
    * Empty space around the system's edge, as a fraction of `outerLimit`.
@@ -58,10 +101,12 @@ export interface RenderSystemOptions extends DocumentOptions {
   /**
    * Prefix of the ids this drawing generates, for its three gradients.
    *
-   * Two SVGs sharing a page share one id namespace, so two systems drawn with
-   * the same prefix would both use the first one's star colour. Pass a distinct
-   * prefix per drawing — the system's id is a good one.
-   * @default 'starmap'
+   * Two SVGs sharing a page share one id namespace, and the gradients carry the
+   * star's colour — so two drawings with one prefix would both wear the first
+   * one's. The default is built from the system's id, so two systems never
+   * collide; pass your own only to draw the same system twice on one page, with
+   * two themes. Characters an XML id cannot hold are replaced by `_`.
+   * @default `starmap-<system id>`
    */
   idPrefix?: string
   /**
@@ -69,6 +114,17 @@ export interface RenderSystemOptions extends DocumentOptions {
    * gate label names where it leads.
    */
   systems?: SystemsById
+  /**
+   * Draw only these layers — always in their usual order, whatever order you
+   * list them in. All of {@link SYSTEM_LAYERS} by default.
+   *
+   * @example Redraw only what moves
+   * ```ts
+   * const still = renderSystemContent(system, { layers: ['defs', 'background', 'backdrop', 'orbits', 'fields'] })
+   * const moving = renderSystemContent(system, { t, layers: ['routes', 'planets'] })
+   * ```
+   */
+  layers?: readonly SystemLayer[]
 }
 
 /**
@@ -98,58 +154,38 @@ export function renderSystem(system: StarSystem, options: RenderSystemOptions = 
  * ```
  */
 export function renderSystemContent(system: StarSystem, options: RenderSystemOptions = {}): string {
-  const {
-    t = 0,
-    labels = true,
-    backdrop = 260,
-    idPrefix = 'starmap',
-    margin = SYSTEM_MARGIN,
-    systems,
-  } = options
+  const { t = 0, labels = true, backdrop = 260, margin = SYSTEM_MARGIN, systems } = options
 
+  const prefix = idPrefixOf(options.idPrefix ?? `starmap-${system.id}`)
   const theme = resolveTheme(options.theme)
   const view = systemViewBox(system, margin)
-  const scale = scaleOf(view)
-  const pos = systemPositions(system, t)
+  const scale = systemScale(view)
   const starColor = pickColor(theme.stars, system.star.class)
 
-  return [
-    defs(idPrefix, starColor),
-    background(view, theme.background),
-    drawBackdrop(system, view, theme, backdrop, scale),
-    drawOrbits(system, theme, scale),
-    drawFields(system, theme, scale),
-    drawRoutes(system, pos, theme, scale),
-    drawStar(system, idPrefix),
-    drawPlanets(system, pos, theme, scale, labels, idPrefix),
-    drawGates(system, pos, theme, scale, labels, systems),
-  ]
+  // Positions are only worked out if a layer that needs them is drawn.
+  let positions: ReadonlyMap<string, Vec2> | undefined
+  const pos = (): ReadonlyMap<string, Vec2> => (positions ??= systemPositions(system, t))
+
+  const draw: Record<SystemLayer, () => string> = {
+    defs: () => defs(prefix, starColor, theme),
+    background: () => background(view, theme.background),
+    backdrop: () => drawBackdrop(system, view, theme, backdrop, scale),
+    orbits: () => drawOrbits(system, theme, scale),
+    fields: () => drawFields(system, theme, scale),
+    routes: () => drawRoutes(system, pos(), theme, scale),
+    star: () => drawStar(system, prefix),
+    planets: () => drawPlanets(system, pos(), theme, scale, labels, prefix),
+    gates: () => drawGates(system, pos(), theme, scale, labels, systems),
+  }
+  const wanted = new Set(options.layers ?? SYSTEM_LAYERS)
+
+  return SYSTEM_LAYERS.filter((layer) => wanted.has(layer))
+    .map((layer) => draw[layer]())
     .filter((layer) => layer !== '')
     .join('\n')
 }
 
 // ---------------------------------------------------------------- internals
-
-/**
- * The two scale factors every decoration is expressed in.
- *
- * A system can be 300 world units across or 30 000. Sizing a gate glyph or a
- * label in absolute units would make it fill the view in one system and vanish
- * in the next, so both are fractions of the view instead. Only the objects
- * themselves — star radius, planet radius, orbits — keep their real size.
- */
-interface Scale {
-  /** Spacing unit: a 200th of the view. Glyphs and gaps are multiples of it. */
-  u: number
-  /** Stroke unit. A stroke of `1` is a thin, always-visible line. */
-  k: number
-  /** Label size. */
-  font: number
-}
-
-function scaleOf(view: ViewBox): Scale {
-  return { u: view.w / 200, k: view.w / 800, font: view.w / 65 }
-}
 
 /**
  * The three radial gradients that give the drawing its volume.
@@ -158,13 +194,14 @@ function scaleOf(view: ViewBox): Scale {
  * blur filters, which are the expensive part of an SVG to rasterize.
  *
  * - `glow` — the star's halo: its colour, fading to nothing.
- * - `core` — the stellar disc: white at the centre, its colour at the edge.
- * - `shade` — planet volume. Off-centre on purpose, so the lit side is up and
- *   to the left. The light does **not** follow the star: at these sizes the
- *   difference is invisible, and a fixed gradient is shared by every planet
- *   instead of one gradient each.
+ * - `core` — the stellar disc: the theme's light at the centre, its colour at
+ *   the edge.
+ * - `shade` — planet volume, from the theme's light to its shade. Off-centre on
+ *   purpose, so the lit side is up and to the left. The light does **not**
+ *   follow the star: at these sizes the difference is invisible, and a fixed
+ *   gradient is shared by every planet instead of one gradient each.
  */
-function defs(prefix: string, starColor: string): string {
+function defs(prefix: string, starColor: string, theme: Theme): string {
   return el(
     'defs',
     {},
@@ -181,14 +218,16 @@ function defs(prefix: string, starColor: string): string {
       el(
         'radialGradient',
         { id: `${prefix}-core` },
-        [stop('0%', '#ffffff'), stop('60%', starColor), stop('100%', starColor, 0.85)].join(''),
+        [stop('0%', theme.light), stop('60%', starColor), stop('100%', starColor, 0.85)].join(''),
       ),
       el(
         'radialGradient',
         { id: `${prefix}-shade`, cx: '0.32', cy: '0.3', r: '0.85' },
-        [stop('0%', '#ffffff', 0.28), stop('45%', '#000000', 0), stop('100%', '#000000', 0.6)].join(
-          '',
-        ),
+        [
+          stop('0%', theme.light, 0.28),
+          stop('45%', theme.shade, 0),
+          stop('100%', theme.shade, 0.6),
+        ].join(''),
       ),
     ].join('\n'),
   )
@@ -204,10 +243,11 @@ function drawBackdrop(
   view: ViewBox,
   theme: Theme,
   count: number,
-  scale: Scale,
+  scale: SystemScale,
 ): string {
   // Seeded with the system's id: the same system always gets the same sky, and
-  // two systems never get the same one.
+  // two systems never get the same one. A system's view is centred on its star,
+  // which is where the stars are sown.
   const stars = backdropStars(count, view.w * 0.55, system.id, scale.u / 2)
   return group(
     { 'data-layer': 'backdrop', fill: theme.backdropStar },
@@ -215,7 +255,7 @@ function drawBackdrop(
   )
 }
 
-function drawOrbits(system: StarSystem, theme: Theme, scale: Scale): string {
+function drawOrbits(system: StarSystem, theme: Theme, scale: SystemScale): string {
   return group({ 'data-layer': 'orbits', fill: 'none' }, [
     ...system.planets.map((p) =>
       el('circle', {
@@ -237,7 +277,7 @@ function drawOrbits(system: StarSystem, theme: Theme, scale: Scale): string {
   ])
 }
 
-function drawFields(system: StarSystem, theme: Theme, scale: Scale): string {
+function drawFields(system: StarSystem, theme: Theme, scale: SystemScale): string {
   return group(
     { 'data-layer': 'fields' },
     system.asteroidFields.map((f) => {
@@ -285,7 +325,7 @@ function drawRoutes(
   system: StarSystem,
   pos: ReadonlyMap<string, Vec2>,
   theme: Theme,
-  scale: Scale,
+  scale: SystemScale,
 ): string {
   return group(
     { 'data-layer': 'routes' },
@@ -297,6 +337,7 @@ function drawRoutes(
       if (!a || !b) return ''
       const style = pickRouteStyle(theme.routes, route.type)
       return el('line', {
+        'data-kind': 'route',
         'data-id': route.id,
         x1: a.x,
         y1: a.y,
@@ -304,11 +345,29 @@ function drawRoutes(
         y2: b.y,
         stroke: style.stroke,
         'stroke-width': style.width * scale.k,
-        'stroke-dasharray': dash(...style.dash.split(/\s+/).map((n) => Number(n) * scale.k)),
+        'stroke-dasharray': scaledDash(style.dash, scale.k),
         opacity: 0.55,
       })
     }),
   )
+}
+
+/**
+ * A theme's dash pattern, scaled to the view.
+ *
+ * It follows the `stroke-dasharray` syntax: lengths separated by spaces, commas,
+ * or both. An empty pattern, `none`, or anything that is not a list of
+ * non-negative numbers draws a solid line.
+ */
+function scaledDash(pattern: string, k: number): string | undefined {
+  const parts = pattern
+    .trim()
+    .split(/[\s,]+/)
+    .filter((part) => part !== '')
+  if (parts.length === 0) return undefined
+  const lengths = parts.map(Number)
+  if (lengths.some((n) => !Number.isFinite(n) || n < 0)) return undefined
+  return dash(...lengths.map((n) => n * k))
 }
 
 function drawStar(system: StarSystem, prefix: string): string {
@@ -317,7 +376,8 @@ function drawStar(system: StarSystem, prefix: string): string {
     'g',
     { 'data-kind': 'star', 'data-id': star.id },
     [
-      // The halo is six times the disc. It is what reads as brightness.
+      // Two circles: the halo, six times the disc — it is what reads as
+      // brightness — and the disc itself, white-hot at its core.
       el('circle', { r: star.radius * 6, fill: `url(#${prefix}-glow)` }),
       el('circle', { r: star.radius, fill: `url(#${prefix}-core)` }),
     ].join('\n'),
@@ -328,7 +388,7 @@ function drawPlanets(
   system: StarSystem,
   pos: ReadonlyMap<string, Vec2>,
   theme: Theme,
-  scale: Scale,
+  scale: SystemScale,
   labels: boolean,
   prefix: string,
 ): string {
@@ -342,10 +402,11 @@ function drawPlanets(
 
       const parts = [
         // A ring, drawn *before* the disc so the disc hides its near half —
-        // which is the whole trick that reads as perspective. Gas and ice
-        // giants with three moons or more get one; `moons` is only used as a
-        // hint that the planet is big, moons themselves are never drawn.
-        isGiant(planet.type) && (planet.moons ?? 0) >= 3
+        // which is the whole trick that reads as perspective. The theme lists
+        // the types that get one (gas and ice giants by default), for planets
+        // with three moons or more: `moons` is only used as a hint that the
+        // planet is big, moons themselves are never drawn.
+        isRinged(planet.type, theme) && (planet.moons ?? 0) >= 3
           ? el('ellipse', {
               rx: r * 1.9,
               ry: r * 0.55,
@@ -396,7 +457,7 @@ function drawStation(
   planetAt: Vec2,
   pos: ReadonlyMap<string, Vec2>,
   theme: Theme,
-  scale: Scale,
+  scale: SystemScale,
 ): string {
   const at = pos.get(station.id)
   if (!at) return ''
@@ -423,7 +484,7 @@ function drawGates(
   system: StarSystem,
   pos: ReadonlyMap<string, Vec2>,
   theme: Theme,
-  scale: Scale,
+  scale: SystemScale,
   labels: boolean,
   systems: SystemsById | undefined,
 ): string {
@@ -448,7 +509,7 @@ function drawGates(
           width: scale.u * 2,
           height: scale.u * 2,
           fill: theme.gate,
-          transform: `rotate(${45 + gate.angle})`,
+          transform: `rotate(${num(45 + gate.angle)})`,
         }),
         gate.status === 'unstable'
           ? el('circle', {
@@ -487,7 +548,8 @@ function gateLabel(
   return destinations.length ? `${name} → ${destinations.join(', ')}` : name
 }
 
-const isGiant = (type: string | undefined): boolean => type === 'gas' || type === 'ice-giant'
+const isRinged = (type: string | undefined, theme: Theme): boolean =>
+  type !== undefined && theme.ringed.includes(type)
 
 /** `translate(x y)`, rounded like every other coordinate. */
 function translate(at: Vec2): string {

@@ -128,13 +128,16 @@ Structural and referential integrity — without which the galaxy is unusable:
 
 - runtime types of fields (`x` really is a finite number, `name` a non-empty
   string), because TypeScript's guarantees do not survive `JSON.parse`;
-- ids unique across the **whole** universe, hyperlanes included;
+- the format: a galaxy built for another `FORMAT_VERSION` is reported as such,
+  and nothing else is checked;
+- ids unique across the **whole** universe, local routes and hyperlanes
+  included;
 - documented ranges: `security` and `density` in `[0, 1]`, `arcSweep` in
   `[0, 360]`, radii and orbits strictly positive;
 - **every reference by id**: a hyperlane links two systems that exist and does
   not loop on itself, a pair of systems is linked at most once, a gate reaches
-  only existing systems and never its own, a local route links two objects of the
-  **same** system and declares the right `kind`;
+  only existing systems and never its own, a local route links two different
+  objects of the **same** system and declares the right `kind`;
 - the counters in `meta` matching the real contents.
 
 ### What is accepted
@@ -161,8 +164,15 @@ it and throws a `GalaxyValidationError` carrying the whole list in
 
 The consequence is that validation must survive **any** input — `null`, an array
 where an object belongs, a field missing halfway down. Hence the defensive
-helpers (`each()`, `isId()`), which tolerate nonsense so they can report it
-instead of crashing on it.
+helpers (`each()`, `isId()`, `isObject()`), which tolerate nonsense so they can
+report it instead of crashing on it — and a deterministic fuzz test that
+corrupts a valid galaxy thousands of times to hold the promise.
+
+Normalization follows the same rule from the other side: it never guesses at a
+shape. An entry that is not an object, or a collection that is not an array, is
+passed through untouched, so `createGalaxy()` on a malformed JSON description
+throws a `GalaxyValidationError` naming every problem — never an internal
+`TypeError`.
 
 ## Queries
 
@@ -175,9 +185,10 @@ discriminated by `kind`. That is what makes a fully typed `switch` possible with
 no casting, and what lets you recover an object's system from its id alone
 (`entry.systemId`).
 
-`findRoute()` is **Dijkstra with a naive priority queue** (a linear scan): O(n²)
-in the number of systems. Fine up to a few thousand. Past that, index the graph
-once and swap the queue for a binary heap.
+`findRoute()` is **Dijkstra with a binary heap**: O((V + E) log V). Among equally
+short routes it always returns the same one — ties are broken by the systems'
+order in the galaxy. Handed a galaxy it indexes the network first; build that
+index once with `indexNetwork()` and pass it when you query often.
 
 It returns `null` when the two systems are in different components. That is a
 real case, not a theoretical one, because the library no longer guarantees
@@ -218,8 +229,6 @@ longer reads back as it did.
 
 ## Where this could go
 
-- **Dijkstra in O(n log n)** with a binary heap, and an adjacency graph built
-  once instead of per call. Purely internal; the contract does not change.
 - **Freezing the galaxy** (`Object.freeze`, recursively) behind a development
   flag. Immutability is a documented convention today, not an enforced one.
 - **Multiple stars** per system: the contract assumes exactly one.

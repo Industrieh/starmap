@@ -42,6 +42,12 @@ export default function Content(): JSX.Element {
         lockfile, and nothing else added on their behalf.
       </P>
 
+      <P>
+        The renderer asks for the core with a caret range, not an exact version, so it shares the
+        copy your project installs whenever the two are compatible: one data model in your program,
+        not two that disagree about what a <C>Galaxy</C> is.
+      </P>
+
       <Callout tone="note" title="Why two packages and not one">
         The core is useful without a picture: a server computing routes, a worker generating
         universes, a test suite. Bundling a renderer into it would ship SVG-building code to every
@@ -52,8 +58,9 @@ export default function Content(): JSX.Element {
       <H2 id="requirements">What it needs from you</H2>
       <UL>
         <LI>
-          <strong>Any JavaScript runtime.</strong> The package never touches the DOM, so it runs on
-          a server, in a worker, or in a build script just as well as in a browser.
+          <strong>Any JavaScript runtime</strong> — Node 18 or later, Bun, Deno, a browser. The
+          package never touches the DOM, so it runs on a server, in a worker, or in a build script
+          just as well as in a browser.
         </LI>
         <LI>
           <strong>ES modules.</strong> ESM only, with type declarations alongside. No CommonJS
@@ -96,6 +103,7 @@ export default function Content(): JSX.Element {
   resolveTheme,
 
   el, group, text,       // the string primitives, for your own overlays
+  systemScale,           // …and the sizes the drawings use, so overlays match
   type Theme,
   type RenderSystemOptions,
 } from '@industrieh/starmap-render'`}

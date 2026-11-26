@@ -11,9 +11,10 @@
  *   `rng.next()` in the middle of your pipeline and everything after it shifts,
  *   so the same seed now produces a different universe. A snapshot test is the
  *   usual way to make that visible.
- * - **Keep your sequences separate.** The pattern `` `${seed}:${id}:${domain}` ``
- *   gives each mechanic its own sequence, so adding one does not disturb the
- *   others.
+ * - **Keep your sequences separate.** Give each mechanic its own generator with
+ *   `rng.fork('loot')`, or the equivalent seed pattern
+ *   `` `${seed}:${id}:${domain}` ``, so adding a draw to one does not disturb
+ *   the others.
  */
 
 /** A weighted table entry. `w` is a relative weight, not a probability. */
@@ -32,12 +33,29 @@ export interface Rng {
   rand(min: number, max: number): number
   /** Integer in [min, max], **both bounds included**. */
   randInt(min: number, max: number): number
-  /** A uniformly picked element. The array must not be empty. */
+  /**
+   * A uniformly picked element.
+   * @throws {RangeError} on an empty array — there is nothing to pick.
+   */
   pick<T>(arr: readonly T[]): T
   /** True with probability `p` (`0` never, `1` always). */
   chance(p: number): boolean
-  /** An element picked in proportion to its weight `w`. */
+  /**
+   * An element picked in proportion to its weight `w`.
+   * @throws {RangeError} when a weight is negative or not a finite number, or
+   * when no weight is positive — nothing could ever be picked.
+   */
   weighted<T extends Weighted>(table: readonly T[]): T
+  /**
+   * An independent generator for one part of your pipeline, derived from this
+   * one's seed and `label` — never from its state.
+   *
+   * Drawing from a fork does not move this generator, and the same label always
+   * gives the same fork, however many draws were made before.
+   * `rng.fork('loot')` is exactly ``createRng(`${seed}:loot`)``, and forks nest:
+   * `rng.fork('sol').fork('loot')` is ``createRng(`${seed}:sol:loot`)``.
+   */
+  fork(label: string): Rng
 }
 
 /**
@@ -73,9 +91,12 @@ export function mulberry32(a: number): () => number {
  * @example
  * ```ts
  * const rng = createRng('my-game-001')
- * rng.randInt(1, 6)                     // 4
+ * rng.randInt(1, 6)                     // 5
  * rng.pick(['a', 'b', 'c'])             // 'b'
- * rng.weighted([{ w: 9, id: 'common' }, { w: 1, id: 'rare' }])
+ * rng.weighted([{ w: 9, id: 'common' }, { w: 1, id: 'rare' }])   // { w: 9, id: 'common' }
+ *
+ * const loot = rng.fork('loot')         // its own sequence: drawing from it
+ * loot.chance(0.1)                      // never shifts `rng`
  * ```
  */
 export function createRng(seed: string): Rng {
@@ -86,14 +107,26 @@ export function createRng(seed: string): Rng {
     next,
     rand,
     randInt: (min, max) => Math.floor(rand(min, max + 1)),
-    pick: (arr) => arr[Math.floor(next() * arr.length)],
+    pick(arr) {
+      if (arr.length === 0) throw new RangeError('pick() needs a non-empty array')
+      return arr[Math.floor(next() * arr.length)]
+    },
     chance: (p) => next() < p,
     weighted(table) {
-      const total = table.reduce((s, e) => s + e.w, 0)
+      let total = 0
+      for (const e of table) {
+        if (!Number.isFinite(e.w) || e.w < 0) {
+          throw new RangeError(`weighted() needs finite, non-negative weights, got ${e.w}`)
+        }
+        total += e.w
+      }
+      if (total <= 0) throw new RangeError('weighted() needs at least one positive weight')
+
       let r = next() * total
       for (const e of table) if ((r -= e.w) <= 0) return e
       // Safety net: floating-point drift can leave `r > 0` past the last entry.
       return table[table.length - 1]
     },
+    fork: (label) => createRng(`${seed}:${label}`),
   }
 }

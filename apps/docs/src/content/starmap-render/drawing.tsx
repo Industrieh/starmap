@@ -10,6 +10,7 @@ import { RenderCompare, RenderPreview } from '@/components/docs/render-preview'
 import type { TocEntry } from '@/content/registry'
 import { GALAXY, SOL } from '@/content/starmap-render/fixture'
 import { routes } from '@/lib/routes'
+import { outlineElement } from '@/lib/svg-outline'
 
 const T = 4
 
@@ -22,6 +23,22 @@ const GATE_LABELLED = renderSystem(SOL, {
 })
 const MAP = renderGalaxy(GALAXY, { idPrefix: 'dr-map' })
 const EMPTY_SYSTEM = renderSystem(GALAXY.systems[2], { idPrefix: 'dr-empty' })
+
+/** What a planet's group holds, in emitted order — folded from the real output. */
+const PLANET_PARTS: readonly [test: (tag: string) => boolean, note: string][] = [
+  [(tag) => tag.startsWith('<ellipse'), 'the ring of a giant'],
+  [(tag) => tag.includes('-shade)'), 'the shading'],
+  [(tag) => tag.startsWith('<circle') && tag.includes('stroke='), 'the habitable ring'],
+  [(tag) => tag.startsWith('<circle'), 'the disc'],
+  [(tag) => tag.startsWith('<text'), 'the label'],
+  [(tag) => tag.includes('data-kind="station"'), 'a station, placed relative to its planet'],
+]
+
+const PLANET_LISTING = outlineElement(renderSystem(SOL, { t: T }), {
+  match: (tag) => tag.includes('data-id="sol-p1"'),
+  parentOf: (tag) => tag.includes('data-layer="planets"'),
+  note: (tag) => PLANET_PARTS.find(([test]) => test(tag))?.[1],
+})
 
 export const toc: readonly TocEntry[] = [
   { id: 'layers', title: 'Order is the composition', depth: 2 },
@@ -58,20 +75,29 @@ export default function Content(): JSX.Element {
       </Quote>
 
       <RenderCompare
-        left={{ svg: FULL, label: <>Everything on. This is the default.</> }}
+        left={{
+          svg: FULL,
+          alt: 'The Sol system with every layer drawn: backdrop stars, orbits, fields, the star, planets, the gate and their labels.',
+          label: <>Everything on. This is the default.</>,
+        }}
         right={{
           svg: BARE,
+          alt: 'The same Sol system without the backdrop stars and without any label.',
           label: (
             <>
-              <C>{`{ backdrop: 0, labels: false }`}</C> — the same drawing with two layers removed,
-              which is the easiest way to see what the others are doing.
+              <C>{`{ backdrop: 0, labels: false }`}</C> — the same drawing without the backdrop
+              layer and without the labels, which is the easiest way to see what the rest is doing.
             </>
           ),
         }}
       />
 
       <H3 id="system-layers">The system layers</H3>
-      <P>Bottom to top, exactly as they are emitted:</P>
+      <P>
+        Bottom to top, exactly as they are emitted — and as <C>SYSTEM_LAYERS</C> lists them. The{' '}
+        <C>layers</C> option draws a subset, still in this order; only <C>routes</C> and{' '}
+        <C>planets</C> depend on <C>t</C>, so an animation can draw the others once.
+      </P>
 
       <PropsTable
         rows={[
@@ -116,13 +142,14 @@ export default function Content(): JSX.Element {
           {
             name: 'routes',
             type: 'data-layer',
-            description: 'Local routes, each stroked with its own dash pattern.',
+            description:
+              'Local routes, each stroked with its own dash pattern, each a line carrying data-kind="route" and its data-id.',
           },
           {
             name: 'star',
             type: 'data-kind',
             description:
-              'Not a layer of its own — one group, sitting between the fields and the planets.',
+              'Not a layer of its own — one group, sitting between the routes and the planets.',
           },
           {
             name: 'planets',
@@ -142,8 +169,23 @@ export default function Content(): JSX.Element {
 
       <PropsTable
         rows={[
+          {
+            name: 'defs',
+            type: 'not a layer',
+            description: (
+              <>
+                One radial gradient, the halo every system dot shares — <C>theme.light</C> at its
+                centre. Its id is prefixed, see <C>idPrefix</C>.
+              </>
+            ),
+          },
           { name: 'background', type: 'a bare <rect>', description: 'Same as above.' },
-          { name: 'backdrop', type: 'data-layer', description: 'The star field, sown wider.' },
+          {
+            name: 'backdrop',
+            type: 'data-layer',
+            description:
+              'The star field, sown around the centre of the view and across its longer side — wherever your coordinates put the galaxy.',
+          },
           {
             name: 'lanes',
             type: 'data-layer',
@@ -159,6 +201,7 @@ export default function Content(): JSX.Element {
 
       <RenderPreview
         svg={MAP}
+        alt="The galaxy map: five systems joined by five hyperlanes, nothing highlighted."
         height="md"
         caption={
           <>
@@ -195,9 +238,10 @@ export default function Content(): JSX.Element {
       </UL>
 
       <P>
-        Inside the source that second family goes through a small <C>Scale</C> object — <C>u</C> for
-        spacing (a 200th of the view), <C>k</C> for strokes, <C>font</C> for labels. You never see
-        it from outside, but it is why a drawing holds up at any size.
+        That second family is computed by <C>systemScale(view)</C> — <C>u</C> for spacing (a 200th
+        of the view), <C>k</C> for strokes, <C>font</C> for labels — and <C>galaxyScale(view)</C> on
+        the map. Both are exported: an overlay drawn with them is sized exactly like the drawing
+        under it, and that is why either holds up at any size.
       </P>
 
       <Callout tone="tip" title="This is what makes a thumbnail work">
@@ -209,9 +253,10 @@ export default function Content(): JSX.Element {
 
       <H3 id="star">The star</H3>
       <P>
-        Three circles stacked: a wide halo on the glow gradient, the disc itself, and a bright core.
-        The halo is several times the disc — that is what reads as brightness rather than as a
-        bigger star.
+        Two circles stacked: a wide halo on the glow gradient, six times the radius of the star, and
+        the disc itself, filled with the core gradient — <C>theme.light</C> at the centre, the
+        star&apos;s colour at the edge. The halo is what reads as brightness rather than as a bigger
+        star.
       </P>
       <P>
         Its colour comes from <C>theme.stars</C>, keyed by <C>star.class</C>. A class the table does
@@ -221,10 +266,16 @@ export default function Content(): JSX.Element {
       <H3 id="planets">Planets and stations</H3>
       <P>
         A planet is a disc filled from <C>theme.planets</C> by its <C>type</C>, with a shading
-        gradient over it so it does not read as a flat dot. Two optional additions:
+        gradient over it — <C>theme.light</C> on the lit side, <C>theme.shade</C> on the dark one —
+        so it does not read as a flat dot. Three optional additions:
       </P>
 
       <UL>
+        <LI>
+          a tilted ring around a planet with three <C>moons</C> or more whose type is listed in{' '}
+          <C>theme.ringed</C> — <C>gas</C> and <C>ice-giant</C> by default — drawn before the disc,
+          so the disc hides its near half;
+        </LI>
         <LI>
           a ring in <C>theme.habitable</C> when <C>planet.habitable</C> is true;
         </LI>
@@ -238,19 +289,9 @@ export default function Content(): JSX.Element {
         it. Each is a small mark coloured from <C>theme.stations</C> by its <C>type</C>.
       </P>
 
-      <CodeBlock
-        lang="ts"
-        noCopy
-        code={`<g data-layer="planets">
-  <g data-kind="planet" data-id="sol-p1">
-    <circle .../>                                   the disc
-    <circle fill="url(#starmap-shade)" .../>        the shading
-    <circle stroke="#4fd8a5" .../>                  habitable ring
-    <g data-kind="station" data-id="sol-p1-st0">…</g>
-    <text>Vesper</text>
-  </g>
-</g>`}
-      />
+      {/* Folded from the real output, so the order and the attributes are the
+          renderer's, not a memory of them. */}
+      <CodeBlock lang="xml" noCopy code={PLANET_LISTING} />
 
       <H3 id="gates">Gates</H3>
       <P>
@@ -259,18 +300,19 @@ export default function Content(): JSX.Element {
       </P>
 
       <Callout tone="tip" title="A gate label can name where it leads">
-        Pass <C>systems: indexSystems(galaxy)</C> and the label becomes the destination&apos;s name
-        rather than the gate&apos;s. The renderer cannot know it otherwise — a system does not carry
-        its neighbours.
+        Pass <C>systems: indexSystems(galaxy)</C> and the label adds the destination&apos;s name
+        after the gate&apos;s — <C>Sol Gate → Vega</C>. The renderer cannot know it otherwise — a
+        system does not carry its neighbours.
       </Callout>
 
       <RenderPreview
         svg={GATE_LABELLED}
+        alt="The Sol system, its gate at the top right labelled Sol Gate → Vega."
         height="md"
         code={`import { indexSystems } from '@industrieh/starmap'
 
 renderSystem(system, { systems: indexSystems(galaxy) })`}
-        caption="The gate at the top right is labelled “Vega”, its destination, instead of “Sol Gate”. Without the index the renderer has no way to know — a system does not carry its neighbours."
+        caption="The gate at the top right reads “Sol Gate → Vega”: its own name, then where it leads. Without the index the label stops at “Sol Gate” — a system does not carry its neighbours."
       />
 
       <H3 id="fields">Asteroid fields</H3>
@@ -310,21 +352,22 @@ arcPath(220, 0, 360)
       />
 
       <H3 id="galaxy-objects">Systems and lanes</H3>
-      <P>On the galaxy map, a system is up to four things stacked:</P>
+      <P>On the galaxy map, a system is three things stacked, and a fourth when labels are on:</P>
 
       <UL>
         <LI>a halo, so a dense cluster still reads as points of light;</LI>
         <LI>
-          a ring in <C>theme.factions</C>, keyed by <C>faction.id</C> — only when the system has a
-          faction;
+          a ring in <C>theme.factions</C>, keyed by <C>faction.id</C> — always drawn: a system with
+          no faction gets <C>factions.default</C>;
         </LI>
-        <LI>the dot itself;</LI>
+        <LI>the dot itself, coloured by its star&apos;s class;</LI>
         <LI>its name, when labels are on.</LI>
       </UL>
 
       <P>
         A lane is a line between two systems, in <C>theme.lane</C> — or in <C>theme.highlight</C>{' '}
-        when it is part of the highlighted path.
+        when it is part of the highlighted path — carrying <C>data-kind=&quot;lane&quot;</C> and its{' '}
+        <C>data-id</C>, like every object an application may want to hit.
       </P>
 
       <Callout tone="tip" title="The faction ring is dashed until it is highlighted">
@@ -388,15 +431,16 @@ arcPath(220, 0, 360)
 
       <RenderPreview
         svg={EMPTY_SYSTEM}
+        alt="Rigel: a lone blue-white star on its backdrop, nothing orbiting it."
         height="sm"
         caption="Rigel: a star and nothing else. No planets layer, no fields layer, no gates layer — and still a perfectly valid document."
       />
 
       <Callout tone="note" title="A name with an ampersand does not break the document">
         Every name in a galaxy is user data, and it goes through XML escaping before it reaches a
-        string. A system called <C>Ohm &amp; Sons</C> comes out as <C>Ohm &amp;amp; Sons</C> — which
-        is also what stops a name carrying a tag from injecting markup into the page that embeds the
-        drawing.
+        string — the control characters XML cannot hold at all are dropped on the way. A system
+        called <C>Ohm &amp; Sons</C> comes out as <C>Ohm &amp;amp; Sons</C> — which is also what
+        stops a name carrying a tag from injecting markup into the page that embeds the drawing.
       </Callout>
     </>
   )

@@ -9,7 +9,15 @@
 import { createGalaxy, indexSystems, systemPositions } from '@industrieh/starmap'
 import { describe, expect, test } from 'vitest'
 
-import { DEFAULT_THEME, num, renderSystem, renderSystemContent } from '../src/index'
+import {
+  DEFAULT_THEME,
+  escapeXml,
+  num,
+  renderSystem,
+  renderSystemContent,
+  resolveTheme,
+  SYSTEM_LAYERS,
+} from '../src/index'
 import { galaxy, kepler, sol } from './fixture'
 import { xmlProblems } from './xml'
 
@@ -170,5 +178,141 @@ describe('degenerate input', () => {
     const out = renderSystem(empty.systems[0])
     expect(xmlProblems(out)).toEqual([])
     expect(out).toContain('data-kind="star"')
+  })
+})
+
+describe('ids of the gradients', () => {
+  test('by default they are built from the system id, so two systems never share them', () => {
+    expect(renderSystem(sol)).toContain('url(#starmap-sol-glow)')
+    expect(renderSystem(galaxy.systems[1])).toContain('url(#starmap-vega-glow)')
+  })
+
+  test('a prefix an XML id cannot hold is made safe, definition and reference alike', () => {
+    const odd = createGalaxy({
+      systems: [{ id: 'alpha centauri', name: 'Alpha Centauri', x: 0, y: 0, star: { radius: 9 } }],
+    }).systems[0]
+    const out = renderSystem(odd, { idPrefix: 'alpha centauri' })
+    expect(out).toContain('id="alpha_centauri-glow"')
+    expect(out).toContain('url(#alpha_centauri-glow)')
+    expect(renderSystem(odd)).toContain('url(#starmap-alpha_centauri-glow)')
+    expect(renderSystem(odd, { idPrefix: '42' })).toContain('url(#_42-glow)')
+  })
+})
+
+const dashOf = (pattern: string): string | undefined => {
+  const out = renderSystem(sol, {
+    backdrop: 0,
+    theme: { routes: { orbital: { stroke: '#fff', dash: pattern, width: 1 } } },
+  })
+  const route = out.slice(out.indexOf('data-kind="route"'))
+  return route.slice(0, route.indexOf('/>')).match(/stroke-dasharray="([^"]*)"/)?.[1]
+}
+
+describe('route dash patterns', () => {
+  /** The `stroke-dasharray` of the one route of Sol, with a given orbital dash. */
+
+  test('commas and stray spaces mean the same pattern, as in SVG', () => {
+    const expected = dashOf('6 8')
+    expect(expected).toMatch(/^[\d.]+ [\d.]+$/)
+    for (const pattern of ['6,8', '6, 8', ' 6 8 ', '6 , 8']) expect(dashOf(pattern)).toBe(expected)
+  })
+
+  test('an empty pattern, none, or garbage draws a solid line', () => {
+    for (const pattern of ['', 'none', 'dotted']) expect(dashOf(pattern)).toBeUndefined()
+  })
+
+  test('a route says what it is', () => {
+    // The derived id is `earth>sol-gate0`, escaped like any attribute.
+    expect(svg).toContain(`data-kind="route" data-id="${escapeXml(sol.localRoutes[0].id)}"`)
+  })
+})
+
+describe('layers', () => {
+  test('drawing the layers one by one gives back the whole drawing', () => {
+    const options = { t: 7, systems: indexSystems(galaxy) }
+    const pieces = SYSTEM_LAYERS.map((layer) =>
+      renderSystemContent(sol, { ...options, layers: [layer] }),
+    )
+    expect(pieces.filter((piece) => piece !== '').join('\n')).toBe(
+      renderSystemContent(sol, options),
+    )
+  })
+
+  test('only routes and planets move with time', () => {
+    const still = SYSTEM_LAYERS.filter((layer) => layer !== 'routes' && layer !== 'planets')
+    expect(renderSystemContent(sol, { t: 0, layers: still })).toBe(
+      renderSystemContent(sol, { t: 99, layers: still }),
+    )
+    expect(renderSystemContent(sol, { t: 0, layers: ['planets'] })).not.toBe(
+      renderSystemContent(sol, { t: 99, layers: ['planets'] }),
+    )
+  })
+
+  test('nothing listed, nothing drawn', () => {
+    expect(renderSystemContent(sol, { layers: [] })).toBe('')
+  })
+})
+
+const ringOf = (out: string) => out.includes('<ellipse')
+
+describe('theme hooks', () => {
+  test('the types that get a ring come from the theme', () => {
+    expect(ringOf(svg)).toBe(true)
+    expect(ringOf(renderSystem(sol, { theme: { ringed: [] } }))).toBe(false)
+    const custom = createGalaxy({
+      systems: [
+        {
+          id: 's',
+          name: 'S',
+          x: 0,
+          y: 0,
+          star: { radius: 9 },
+          planets: [{ name: 'P', type: 'gas-giant', orbit: 80, radius: 9, moons: 4 }],
+        },
+      ],
+    }).systems[0]
+    expect(ringOf(renderSystem(custom))).toBe(false)
+    expect(ringOf(renderSystem(custom, { theme: { ringed: ['gas-giant'] } }))).toBe(true)
+  })
+
+  test('light and shade reach the gradients', () => {
+    const out = renderSystem(sol, { theme: { light: '#fffbe0', shade: '#101020' } })
+    expect(out).toContain('stop-color="#fffbe0"')
+    expect(out).toContain('stop-color="#101020"')
+    expect(out).not.toContain('#000000')
+  })
+
+  test('a resolved theme gives the same drawing as its input', () => {
+    const input = { background: '#000', planets: { terran: '#7ee787' } }
+    expect(renderSystem(sol, { theme: resolveTheme(input) })).toBe(
+      renderSystem(sol, { theme: input }),
+    )
+  })
+
+  test('a type named after an Object.prototype member falls back like any unknown type', () => {
+    const odd = createGalaxy({
+      systems: [
+        {
+          id: 's',
+          name: 'S',
+          x: 0,
+          y: 0,
+          star: { radius: 9 },
+          planets: [{ name: 'P', type: 'constructor', orbit: 80, radius: 9 }],
+        },
+      ],
+    }).systems[0]
+    const out = renderSystem(odd)
+    expect(out).not.toContain('function')
+    expect(out).toContain(`fill="${DEFAULT_THEME.planets.default}"`)
+  })
+})
+
+describe('the role of the root element', () => {
+  test('img with a title, nothing without, and false or a string when asked', () => {
+    expect(rootTag(renderSystem(sol, { title: 'Sol' }))).toContain('role="img"')
+    expect(rootTag(renderSystem(sol))).not.toContain('role=')
+    expect(rootTag(renderSystem(sol, { title: 'Sol', role: false }))).not.toContain('role=')
+    expect(rootTag(renderSystem(sol, { role: 'group' }))).toContain('role="group"')
   })
 })

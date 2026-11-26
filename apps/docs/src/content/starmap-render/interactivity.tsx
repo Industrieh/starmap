@@ -62,8 +62,8 @@ export default function Content(): JSX.Element {
             type: 'on each object',
             description: (
               <>
-                <C>star</C>, <C>planet</C>, <C>station</C>, <C>gate</C>, <C>field</C>, <C>system</C>
-                .
+                <C>star</C>, <C>planet</C>, <C>station</C>, <C>gate</C>, <C>field</C>, <C>route</C>{' '}
+                in a system; <C>system</C> and <C>lane</C> on the galaxy map.
               </>
             ),
           },
@@ -94,13 +94,18 @@ export default function Content(): JSX.Element {
       <Callout tone="tip" title="The id is the join between the two packages">
         A click gives you <C>sol-p1</C>. <C>indexGalaxy(galaxy).get(&apos;sol-p1&apos;)</C> gives
         you the object, its kind and its system. You never have to thread anything through the
-        drawing.
+        drawing. Lanes and local routes are the two exceptions: they are not objects of the index,
+        so read their <C>data-kind</C> first and look them up in <C>galaxy.lanes</C> or the
+        system&apos;s <C>localRoutes</C>.
       </Callout>
 
       <H2 id="click">Click and hover</H2>
       <P>
         One listener on the container, and <C>closest()</C> to find which object was hit. No
-        listener per element, and nothing to re-attach when you re-render.
+        listener per element, and nothing to re-attach when you re-render. Listen for{' '}
+        <C>pointerdown</C> rather than <C>click</C>: a click needs the press and the release to land
+        on the same element, and a drawing re-rendered between the two has replaced that element —
+        at sixty frames a second, an ordinary click is often simply lost.
       </P>
 
       <CodeBlock
@@ -112,7 +117,10 @@ import { renderSystem } from '@industrieh/starmap-render'
 const index = indexGalaxy(galaxy)          // built once
 container.innerHTML = renderSystem(system, { t: 0 })
 
-container.addEventListener('click', (event) => {
+// pointerdown, not click: it fires on the element under the pointer at the press,
+// whatever the next frame does to the markup.
+container.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return             // the primary button only
   const target = (event.target as Element).closest('[data-id]')
   if (!target) return
 
@@ -126,9 +134,11 @@ container.addEventListener('click', (event) => {
       />
 
       <P>
-        Hover is the same shape with <C>mouseover</C>. Because the handler sits on the container, it
-        keeps working after every re-render — which matters when you are re-rendering sixty times a
-        second.
+        Hover is the same shape with <C>pointerover</C>. Because the handler sits on the container,
+        it keeps working after every re-render. For a drawing you render once and never replace,{' '}
+        <C>click</C> is fine — it is the replacing that loses it. The other way out is to stop
+        replacing what is under the pointer: draw the still layers once and redraw only the ones
+        that move, <A href="#perf">below</A>.
       </P>
 
       <Callout tone="warning" title="An &lt;img&gt; is not clickable">
@@ -174,26 +184,37 @@ function select(id: string) {
       <CodeBlock
         lang="ts"
         code={`import { systemPositions } from '@industrieh/starmap'
-import { el, renderSystemContent, systemViewBox, viewBoxAttr } from '@industrieh/starmap-render'
+import {
+  el,
+  renderSystemContent,
+  systemScale,
+  systemViewBox,
+  viewBoxAttr,
+} from '@industrieh/starmap-render'
+
+const view = systemViewBox(system)
+const { u, k } = systemScale(view)   // the drawing's own spacing and stroke units
 
 const at = systemPositions(system, t)
 const p = at.get(selectedId)
 
 const ring = p
-  ? el('circle', { cx: p.x, cy: p.y, r: 18, fill: 'none', stroke: '#fff', 'stroke-width': 2 })
+  ? el('circle', { cx: p.x, cy: p.y, r: u * 4, fill: 'none', stroke: '#fff', 'stroke-width': k * 2 })
   : ''
 
 // Your overlay goes last, so it is drawn on top.
 container.innerHTML =
-  \`<svg viewBox="\${viewBoxAttr(systemViewBox(system))}">\` +
+  \`<svg viewBox="\${viewBoxAttr(view)}">\` +
   renderSystemContent(system, { t }) +
   ring +
   '</svg>'`}
       />
 
       <Callout tone="note" title="Your overlay is in world units too">
-        The positions come from the core, in the same units the drawing uses. There is no conversion
-        step — which is the point of never using pixels internally.
+        The positions come from the core, in the same units the drawing uses, and{' '}
+        <C>systemScale()</C> gives you the sizes the drawing derives from its view — so a ring sized
+        in <C>u</C> stays in proportion in a system of any size. There is no conversion step, which
+        is the point of never using pixels internally.
       </Callout>
 
       <H2 id="pan-zoom">Pan and zoom</H2>
@@ -280,8 +301,9 @@ setLayer('orbits', false)     // just the bodies`}
           render it once and only touch its <C>viewBox</C>.
         </LI>
         <LI>
-          <strong>Turn the backdrop off</strong> when animating. <C>{`{ backdrop: 0 }`}</C> removes
-          a few hundred circles that never move.
+          <strong>Redraw only the layers that move.</strong> Only <C>routes</C> and <C>planets</C>{' '}
+          depend on <C>t</C>. The <C>layers</C> option draws a subset, so the still ones — a few
+          hundred backdrop circles among them — can be drawn once.
         </LI>
         <LI>
           <strong>Move groups instead of re-rendering.</strong> Keep the SVG in the DOM and set a{' '}
@@ -292,13 +314,37 @@ setLayer('orbits', false)     // just the bodies`}
           . The package is no longer involved per frame.
         </LI>
         <LI>
-          <strong>Resolve the theme once</strong>, outside the loop.
+          <strong>Resolve the theme once</strong>, outside the loop — a resolved theme is used as
+          is, with no merge per frame.
         </LI>
       </UL>
 
       <CodeBlock
         lang="ts"
-        code={`// The last one, concretely.
+        code={`// Still layers once, moving layers per frame. The stack keeps its order: the star
+// sits between the routes and the planets, the gates above them.
+const theme = resolveTheme(myTheme)
+const draw = (layers: SystemLayer[], t = 0) => renderSystemContent(system, { t, theme, layers })
+
+svg.innerHTML =
+  draw(['defs', 'background', 'backdrop', 'orbits', 'fields']) +
+  '<g id="moving-routes"></g>' +
+  draw(['star']) +
+  '<g id="moving-planets"></g>' +
+  draw(['gates'])
+
+const routes = svg.querySelector('#moving-routes')!
+const planets = svg.querySelector('#moving-planets')!
+
+function frame(t: number) {
+  routes.innerHTML = draw(['routes'], t)
+  planets.innerHTML = draw(['planets'], t)
+}`}
+      />
+
+      <CodeBlock
+        lang="ts"
+        code={`// Moving groups instead, concretely.
 container.innerHTML = renderSystem(system, { t: 0 })   // once
 
 function frame(t: number) {

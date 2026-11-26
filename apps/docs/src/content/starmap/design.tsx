@@ -47,8 +47,9 @@ export default function Content(): JSX.Element {
 
       <P>
         <C>createGalaxy()</C> reads no clock, calls no <C>Math.random()</C>, touches no filesystem,
-        and does not mutate the object you hand it. Call it twice on the same input and you get two
-        equal galaxies. Everything downstream is a pure read.
+        and does not mutate the object you hand it — nor keep any part of it: every object and array
+        is copied, so the galaxy shares nothing with your description. Call it twice on the same
+        input and you get two equal galaxies. Everything downstream is a pure read.
       </P>
 
       <H2 id="no-generate">It does not generate</H2>
@@ -117,14 +118,22 @@ export default function Content(): JSX.Element {
 
       <UL>
         <LI>
-          runtime types: <C>x</C> really is a finite number, <C>name</C> a non-empty string;
+          the format: a galaxy built for another <C>FORMAT_VERSION</C> is reported as such — one
+          issue, and nothing else checked, because its shape belongs to another contract;
         </LI>
-        <LI>ids unique across the whole galaxy, hyperlanes included;</LI>
+        <LI>
+          runtime types and shapes: <C>x</C> really is a finite number, <C>name</C> a non-empty
+          string, <C>planets</C> an array of objects;
+        </LI>
+        <LI>ids unique across the whole galaxy, hyperlanes and local routes included;</LI>
         <LI>
           documented ranges: <C>security</C> and <C>density</C> in <C>[0, 1]</C>, <C>arcSweep</C> in{' '}
           <C>[0, 360]</C>, radii and orbits strictly positive;
         </LI>
-        <LI>every reference by id resolves to an object that exists and has the right kind;</LI>
+        <LI>
+          every reference by id resolves to an object that exists and has the right kind — and a
+          hyperlane or a local route never links something to itself;
+        </LI>
         <LI>
           the counters in <C>meta</C> match the real contents.
         </LI>
@@ -186,7 +195,9 @@ if (parts.length > 1) throw new Error('Stranded systems')   // your rule, your c
           instead of the result;
         </LI>
         <LI>
-          <strong>nothing needs to be defensively cloned</strong>, because nothing writes.
+          <strong>nothing needs to be defensively cloned</strong>, because nothing writes — and{' '}
+          <C>createGalaxy()</C> copies every object and array of your description, so the galaxy
+          cannot change behind your back when that description does.
         </LI>
       </UL>
 

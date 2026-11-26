@@ -27,11 +27,20 @@ export interface DocumentOptions {
    * announced by a screen reader instead of being skipped.
    */
   title?: string
+  /**
+   * The `role` of the root element. By default `img` when there is a `title` —
+   * the drawing is announced as one picture — and none otherwise.
+   *
+   * Pass `false` for an interactive drawing whose objects you make reachable
+   * yourself: `role="img"` hides everything inside it from assistive
+   * technology. Any other string is written as is.
+   */
+  role?: string | false
 }
 
 /** Wrap finished layers in a standalone, self-describing SVG document. */
 export function svgDocument(view: ViewBox, body: string, options: DocumentOptions = {}): string {
-  const { width, height, title } = options
+  const { width, height, title, role } = options
   // `xmlns` is what makes the string usable outside an HTML parser: a .svg file,
   // a data: URI, an <img src>. Inline in HTML it is optional but harmless.
   const attrs = {
@@ -40,7 +49,7 @@ export function svgDocument(view: ViewBox, body: string, options: DocumentOption
     width,
     height,
     preserveAspectRatio: 'xMidYMid meet',
-    role: title === undefined ? undefined : 'img',
+    role: role === false ? undefined : (role ?? (title === undefined ? undefined : 'img')),
   }
   const head = title === undefined ? '' : `${el('title', {}, escapeXml(title))}\n`
   return el('svg', attrs, `\n${head}${body}\n`)

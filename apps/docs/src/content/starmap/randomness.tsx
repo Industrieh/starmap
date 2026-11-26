@@ -43,8 +43,9 @@ export default function Content(): JSX.Element {
 
       <H2 id="api">The generator</H2>
       <P>
-        <C>createRng()</C> takes any string and hands back six methods. Each instance carries its
-        own state, so two generators made from the same seed produce the same sequence.
+        <C>createRng()</C> takes any string and hands back a generator: six ways to draw, and{' '}
+        <C>fork()</C> to split off an independent one. Each instance carries its own state, so two
+        generators made from the same seed produce the same sequence.
       </P>
 
       <CodeBlock
@@ -55,7 +56,7 @@ const rng = createRng('my-game-001')
 
 rng.next()                 // 0.721389…  float in [0, 1)
 rng.rand(10, 20)           // float in [10, 20)
-rng.randInt(1, 6)          // 4 — integer, BOTH bounds included
+rng.randInt(1, 6)          // 2 — integer, BOTH bounds included
 rng.pick(['a', 'b', 'c'])  // 'a'
 rng.chance(0.5)            // true — true with probability p
 rng.weighted([{ w: 9, id: 'common' }, { w: 1, id: 'rare' }])
@@ -87,7 +88,12 @@ rng.weighted([{ w: 9, id: 'common' }, { w: 1, id: 'rare' }])
           {
             name: 'pick(arr)',
             type: '<T>(readonly T[]) => T',
-            description: 'A uniformly chosen element. The array must not be empty.',
+            description: (
+              <>
+                A uniformly chosen element. Throws a <C>RangeError</C> on an empty array — there is
+                nothing to pick.
+              </>
+            ),
           },
           {
             name: 'chance(p)',
@@ -104,7 +110,19 @@ rng.weighted([{ w: 9, id: 'common' }, { w: 1, id: 'rare' }])
             description: (
               <>
                 An element chosen in proportion to its <C>w</C>. Weights are relative, not
-                probabilities — they need not sum to anything.
+                probabilities — they need not sum to anything. Throws a <C>RangeError</C> on an
+                empty table, a negative or non-finite weight, or when no weight is positive.
+              </>
+            ),
+          },
+          {
+            name: 'fork(label)',
+            type: '(string) => Rng',
+            description: (
+              <>
+                An independent generator, derived from the seed and <C>label</C> — never from this
+                one&apos;s state, so drawing from it does not move this one. Exactly{' '}
+                <C>{'createRng(`${seed}:${label}`)'}</C>, and forks nest.
               </>
             ),
           },
@@ -120,30 +138,38 @@ rng.weighted([{ w: 9, id: 'common' }, { w: 1, id: 'rare' }])
       <H2 id="streams">Keep your sequences separate</H2>
       <P>
         This is the single most useful habit, and the one that is painful to retrofit. Give each
-        mechanic its own generator, keyed by seed, subject and purpose:
+        mechanic its own generator, keyed by seed, subject and purpose — which is what <C>fork()</C>{' '}
+        is for:
       </P>
 
       <CodeBlock
         lang="ts"
-        code={`const seed = 'world-7'
+        code={`const world = createRng('world-7')
+const sol = world.fork('sol')
 
-const loot       = createRng(\`\${seed}:sol:loot\`)
-const encounters = createRng(\`\${seed}:sol:encounters\`)
+const loot       = sol.fork('loot')         // exactly createRng('world-7:sol:loot')
+const encounters = sol.fork('encounters')
 
 loot.randInt(1, 100)         // 41
 encounters.randInt(1, 100)   // 51 — a different sequence entirely`}
       />
 
       <P>
-        Now adding a mechanic — a new <C>{`\${seed}:sol:weather`}</C> stream — does not disturb the
-        loot anyone has already seen. With a single shared generator, every insertion shifts
+        A fork depends on the seed and its label only. However many draws <C>world</C> or <C>sol</C>{' '}
+        have made, <C>sol.fork(&apos;loot&apos;)</C> starts the same sequence — and drawing from it
+        never moves them.
+      </P>
+
+      <P>
+        Now adding a mechanic — a new <C>sol.fork(&apos;weather&apos;)</C> stream — does not disturb
+        the loot anyone has already seen. With a single shared generator, every insertion shifts
         everything downstream of it.
       </P>
 
       <Callout tone="tip" title="A stream per entity works too">
-        <C>{`\${seed}:\${systemId}:loot`}</C> gives each system its own independent sequence, which
-        means you can generate a system&apos;s contents lazily, when the player first arrives, and
-        still get the same result as if you had generated everything up front.
+        <C>world.fork(systemId).fork(&apos;loot&apos;)</C> gives each system its own independent
+        sequence, which means you can generate a system&apos;s contents lazily, when the player
+        first arrives, and still get the same result as if you had generated everything up front.
       </Callout>
 
       <H2 id="order">Draw order is a contract</H2>
@@ -206,11 +232,12 @@ const TYPES = [
 ] as const
 
 export function generate(seed: string, count: number): Galaxy {
-  const rng = createRng(\`\${seed}:layout\`)
+  const root = createRng(seed)
+  const rng = root.fork('layout')
 
   const systems = Array.from({ length: count }, (_, i) => {
     // One stream per system: adding a mechanic later stays local.
-    const local = createRng(\`\${seed}:system-\${i}\`)
+    const local = root.fork(\`system-\${i}\`)
     const planetCount = local.randInt(0, 5)
 
     return {
@@ -230,11 +257,13 @@ export function generate(seed: string, count: number): Galaxy {
     }
   })
 
-  // A ring, so the network is connected by construction.
-  const lanes = systems.map((s, i) => ({
-    from: s.id,
-    to: systems[(i + 1) % systems.length].id,
-  }))
+  // A ring, so the network is connected by construction. Below three systems a
+  // ring would link a pair twice, or a system to itself — both rejected by
+  // validation — so a smaller galaxy gets a plain chain instead.
+  const lanes =
+    count < 3
+      ? systems.slice(1).map((s) => ({ from: systems[0].id, to: s.id }))
+      : systems.map((s, i) => ({ from: s.id, to: systems[(i + 1) % count].id }))
 
   // Record the seed: this galaxy can be rebuilt from it alone.
   return createGalaxy({ seed, systems, lanes })
@@ -276,7 +305,7 @@ next()   // 0.448291…`}
       />
 
       <P>
-        <C>createRng(seed)</C> is exactly <C>mulberry32(hashSeed(seed))</C> plus the six
+        <C>createRng(seed)</C> is exactly <C>mulberry32(hashSeed(seed))</C> wrapped in the
         conveniences. Reach for the primitives if you need a numeric seed, or a bare function to
         hand to something else.
       </P>

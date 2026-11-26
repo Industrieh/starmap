@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
 import { findContent } from '@/content/registry'
+import { pageMetadata } from '@/lib/metadata'
 import { LIBRARIES, findLibrary, findPage, flattenPages, routes, siblingPages } from '@/lib/routes'
 
 type Params = { library: string; slug: string }
@@ -29,18 +30,25 @@ export function generateStaticParams(): Params[] {
   )
 }
 
+/**
+ * Only the pages above exist. Without this, an unknown slug was rendered on
+ * request — to a 404, but a 404 then cached as if it were a page.
+ */
+export const dynamicParams = false
+
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { library: librarySlug, slug } = await params
   const library = findLibrary(librarySlug)
   const page = library && findPage(library, slug)
   if (!page) return {}
 
-  // `absolute` bypasses the root layout's `%s · starmap` template — without it
-  // the tab reads "Data model · starmap · starmap".
-  return {
-    title: { absolute: `${page.title} · ${library.name} · starmap` },
+  // `pageMetadata` drops the library name when it is the site name, so this
+  // reads "Data model · starmap" and "Drawing · starmap-render · starmap".
+  return pageMetadata({
+    segments: [page.title, library.name],
     description: page.description,
-  }
+    path: routes.page(library.slug, page.slug),
+  })
 }
 
 export default async function DocPage({
@@ -93,9 +101,9 @@ export default async function DocPage({
             // prose without leaving broken links behind.
             <div className="rounded-lg border border-dashed p-8 text-center">
               <p className="text-sm text-muted-foreground">
-                Content to come, from{' '}
+                Content to come, in{' '}
                 <code className="font-mono text-foreground">
-                  packages/{library.slug}/docs/{page.slug}.md
+                  apps/docs/src/content/{library.slug}/{page.slug}.tsx
                 </code>
               </p>
             </div>
@@ -105,8 +113,10 @@ export default async function DocPage({
         <Separator className="my-12" />
 
         <div className="flex justify-end">
+          {/* The page's own module — the prose is TSX under `src/content/`, not
+              the Markdown in the package. */}
           <Link
-            href={`${routes.githubPackage(library.slug)}/docs`}
+            href={routes.githubPage(library.slug, page.slug)}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -116,7 +126,10 @@ export default async function DocPage({
           </Link>
         </div>
 
-        <nav className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-between">
+        <nav
+          aria-label="Previous and next pages"
+          className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-between"
+        >
           {previous ? (
             <Link
               href={routes.page(library.slug, previous.slug)}

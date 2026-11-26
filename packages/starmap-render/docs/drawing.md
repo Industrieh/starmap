@@ -27,22 +27,29 @@ bitmap, no drawing library.
 A drawing is a flat list of groups, back to front. The order is the whole
 composition — there is no `z-index` in SVG, only document order.
 
-| system view    | galaxy view | holds                                       |
-| -------------- | ----------- | ------------------------------------------- |
-| the background | ✓           | one rectangle, three times the `viewBox`    |
-| `backdrop`     | ✓           | decorative stars                            |
-| `orbits`       | —           | planet circles, gate circles                |
-| `fields`       | —           | belts, clusters and their rocks             |
-| `routes`       | —           | local routes, so they pass under everything |
-| the star       | —           | halo and disc                               |
-| `planets`      | —           | planets, each with its stations             |
-| `gates`        | —           | gates and their labels                      |
-| —              | `lanes`     | hyperlanes                                  |
-| —              | `systems`   | system dots, rings and names                |
+| system view  | galaxy view  | holds                                       |
+| ------------ | ------------ | ------------------------------------------- |
+| `defs`       | `defs`       | the gradients                               |
+| `background` | `background` | one rectangle, three times the `viewBox`    |
+| `backdrop`   | `backdrop`   | decorative stars                            |
+| `orbits`     | —            | planet circles, gate circles                |
+| `fields`     | —            | belts, clusters and their rocks             |
+| `routes`     | —            | local routes, so they pass under everything |
+| `star`       | —            | halo and disc                               |
+| `planets`    | —            | planets, each with its stations             |
+| `gates`      | —            | gates and their labels                      |
+| —            | `lanes`      | hyperlanes                                  |
+| —            | `systems`    | system dots, rings and names                |
 
 Each group carries `data-layer`, which is what an application styles or hides.
 A layer with nothing in it is not emitted at all: a system with no gates
 produces no gate group, rather than an empty one.
+
+The names in the table are also what the `layers` option takes — `SYSTEM_LAYERS`
+and `GALAXY_LAYERS` list them bottom to top. A drawing limited to some layers
+draws them in this order whatever order they are listed in, and computes nothing
+for the others. Only `routes` and `planets` depend on `t`: an animation can draw
+everything else once.
 
 ## The three gradients
 
@@ -57,14 +64,14 @@ expensive part of rasterizing an SVG.
   100% star colour, opacity 0
 
 <radialGradient id="{prefix}-core">    the stellar disc
-  0%   white
+  0%   theme.light (white by default)
   60%  star colour
   100% star colour, opacity 0.85
 
 <radialGradient id="{prefix}-shade" cx="0.32" cy="0.3" r="0.85">   planet volume
-  0%   white, opacity 0.28
-  45%  black, opacity 0
-  100% black, opacity 0.6
+  0%   theme.light, opacity 0.28
+  45%  theme.shade (black by default), opacity 0
+  100% theme.shade, opacity 0.6
 ```
 
 `shade` is off-centre on purpose: the lit side is up and to the left. The light
@@ -72,9 +79,11 @@ does **not** follow the real position of the star. At these sizes the difference
 is invisible, and one shared gradient beats one gradient per planet.
 
 The ids are prefixed because a page shares one id namespace. Two drawings with
-the same prefix would both resolve `url(#starmap-core)` to the first one's
-gradient, so the second system would wear the first one's star colour. Hence
-`idPrefix`.
+the same prefix would both resolve `url(#…-core)` to the first one's gradient,
+so the second system would wear the first one's star colour. The default prefix
+is therefore built from the system's id — `starmap-sol` — and `idPrefix`
+overrides it. Either way, characters an XML id cannot hold (a space, a bracket)
+become `_`: an id that `url(#…)` cannot reference fails silently.
 
 ## A star
 
@@ -120,6 +129,10 @@ stroke in the planet's own colour:
 ```html
 <ellipse rx="{r * 1.9}" ry="{r * 0.55}" stroke-width="{r * 0.28}" transform="rotate(-18)" />
 ```
+
+Which planets get one is a theme decision: `theme.ringed` lists the types —
+`gas` and `ice-giant` by default — and a planet of one of them gets a ring when
+it has three moons or more, `moons` standing in for size.
 
 It is drawn **before** the disc, so the disc hides its near half. That overlap is
 the entire trick that reads as perspective — nothing else about the drawing is
@@ -178,16 +191,25 @@ by id in the same map the planets came from, so a route to a station follows it
 around its planet.
 
 Routes are drawn before every object, so they pass underneath rather than across.
+Each line carries `data-kind="route"` and the route's `data-id`. Its dash pattern
+comes from the theme and follows the `stroke-dasharray` syntax — spaces, commas,
+or both; an empty pattern or `none` draws a solid line.
 
 ## The galaxy map
 
 Each system is three circles and a name: a halo, a faction ring, and a dot
-coloured by the star's class. The faction ring is dashed, and becomes solid and
-thicker when the system is on the highlighted path — a difference that survives
-greyscale.
+coloured by the star's class. The faction ring is always drawn — in the faction's
+colour, or `theme.factions.default` for a system with none. It is dashed, and
+becomes solid and thicker when the system is on the highlighted path — a
+difference that survives greyscale.
 
-Hyperlanes are dashed lines between the two system positions. A highlighted lane
-is solid, thicker and in the `highlight` colour.
+Hyperlanes are dashed lines between the two system positions, each carrying
+`data-kind="lane"` and its `data-id`. A highlighted lane is solid, thicker and in
+the `highlight` colour.
+
+The decorative backdrop is sown around the centre of the view, over a square
+that covers its longer side: a galaxy keeps the positions it was given, so its
+view is rarely centred on the origin.
 
 Nothing on this map moves, so there is no `t`.
 
@@ -202,6 +224,10 @@ fractions of the view instead:
 | `u`    | `view.w / 200` | glyph sizes, gaps, dash lengths |
 | `k`    | `view.w / 800` | stroke widths                   |
 | `font` | `view.w / 65`  | labels                          |
+
+`systemScale(view)` returns exactly these, and `galaxyScale(view)` the map's
+(`dot`, `ring`, `glow`, `k`, `font`, as fractions of the larger side), so an
+overlay drawn on top can match the drawing under it.
 
 What keeps its real size is everything that belongs to the world: star radius,
 planet radius, orbits, belt widths, rock positions. That is the line — if the

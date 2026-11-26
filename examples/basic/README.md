@@ -10,7 +10,8 @@ bun run start                # from this folder
 
 `private: true` — this package never goes to npm. It exists so the docs are
 _checkable_: if it stops compiling or running, the API moved and the docs did
-not follow. `bun run typecheck` at the root covers it.
+not follow. `bun run typecheck` at the root catches a break in compiling, and CI
+also runs it — `bun run example` — to catch a break at run time.
 
 [`src/index.ts`](src/index.ts) follows the path a consumer takes, in six
 commented steps:

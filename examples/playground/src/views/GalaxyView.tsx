@@ -12,12 +12,14 @@
  * same coordinate system — world units, straight out of `system.x` / `system.y`.
  */
 
-import { findRoute, type Galaxy, type Route } from '@industrieh/starmap'
+import { findRoute, type Galaxy, type HyperlaneNetwork, type Route } from '@industrieh/starmap'
 import {
   el,
+  galaxyScale,
   galaxyViewBox,
   group,
   renderGalaxyContent,
+  resolveTheme,
   svgDocument,
   type ThemeInput,
 } from '@industrieh/starmap-render'
@@ -27,10 +29,13 @@ import { SvgStage, type Hit } from './SvgStage'
 
 export interface GalaxyViewProps {
   galaxy: Galaxy
+  /** The lanes indexed by system, from `indexNetwork(galaxy)` — built once, reused by every route. */
+  network: HyperlaneNetwork
   theme: ThemeInput
   /** Where the ship is. Marked, and the origin of every route shown. */
   locationId: string
   selectedId: string | null
+  /** The system under the pointer, if any. */
   hoveredId: string | null
   backdrop: number
   onSelect: (hit: Hit) => void
@@ -39,17 +44,23 @@ export interface GalaxyViewProps {
 }
 
 export function GalaxyView(props: GalaxyViewProps): JSX.Element {
-  const { galaxy, theme, locationId, selectedId, hoveredId, backdrop } = props
+  const { galaxy, network, theme, locationId, selectedId, hoveredId, backdrop } = props
 
-  // Preview the route to whatever the pointer is over, and fall back to the
-  // selection when it is over nothing. Both are ids of *anything* clickable, so
-  // a lane id simply finds no route — which is the right outcome.
+  // Preview the route to the system the pointer is over, and fall back to the
+  // selection when it is over none. The selection may be any object — a
+  // planet seen in the system view, say — and an id that is not a system
+  // simply finds no route, which is the right outcome.
+  //
+  // `network` rather than `galaxy`: the lanes are already indexed, so each
+  // route costs one search and no rebuild. Memoized all the same, because this
+  // component also re-renders for reasons that leave the route alone — a theme
+  // change, say.
   const target = hoveredId ?? selectedId ?? locationId
-  const route = findRoute(galaxy, locationId, target)
+  const route = useMemo(() => findRoute(network, locationId, target), [network, locationId, target])
 
   const svg = useMemo(
     () => drawGalaxy(galaxy, theme, locationId, route, backdrop),
-    [galaxy, theme, locationId, route?.systemIds.join(), backdrop],
+    [galaxy, theme, locationId, route, backdrop],
   )
 
   return (
@@ -57,7 +68,9 @@ export function GalaxyView(props: GalaxyViewProps): JSX.Element {
       className="galaxy"
       svg={svg}
       onPick={props.onSelect}
-      onHover={props.onHover}
+      // Only a system previews a route. A lane is a hit too (`kind: 'lane'`),
+      // and counts as being over nothing: the selection's route stays lit.
+      onHover={(hit) => props.onHover(hit?.kind === 'system' ? hit : null)}
       onEnter={(hit) => hit.kind === 'system' && props.onEnter(hit.id)}
     />
   )
@@ -78,15 +91,28 @@ function drawGalaxy(
   backdrop: number,
 ): string {
   const view = galaxyViewBox(galaxy)
+  // Resolved once for the two uses below; the renderer takes a resolved theme
+  // as is, with no second merge.
+  const resolved = resolveTheme(theme)
   const layers = renderGalaxyContent(galaxy, {
-    theme,
+    theme: resolved,
     backdrop,
     idPrefix: 'galaxy',
     highlight: route?.systemIds,
   })
 
   const here = galaxy.systems.find((s) => s.id === locationId)
-  const size = Math.max(view.w, view.h)
+
+  // The sizes the renderer itself uses for this view — the same `galaxyViewBox`
+  // framing, so the same numbers. The marker is built from them: a ring at the
+  // edge of a system's halo and a fainter one past it, with the renderer's own
+  // stroke unit. Change the framing and it follows.
+  const scale = galaxyScale(view)
+
+  // The ring takes the theme's label colour: light on the dark theme, ink on
+  // the light one — readable on either background, and distinct from the
+  // highlight colour the route is drawn in.
+  const stroke = resolved.label
 
   // A ring around the system the ship is in. `el()` writes one element and
   // rounds every number; `group()` drops the layer entirely if it is empty,
@@ -98,24 +124,28 @@ function drawGalaxy(
           el('circle', {
             cx: here.x,
             cy: here.y,
-            r: size * 0.02,
+            r: scale.glow,
             fill: 'none',
-            stroke: '#ffffff',
-            'stroke-width': size * 0.0016,
+            stroke,
+            'stroke-width': scale.k * 3,
             opacity: 0.9,
           }),
           el('circle', {
             cx: here.x,
             cy: here.y,
-            r: size * 0.03,
+            r: scale.glow * 1.4,
             fill: 'none',
-            stroke: '#ffffff',
-            'stroke-width': size * 0.0008,
+            stroke,
+            'stroke-width': scale.k * 1.5,
             opacity: 0.35,
           }),
         ]
       : [],
   )
 
-  return svgDocument(view, `${layers}\n${marker}`, { title: 'Galaxy map' })
+  // `role: false`: the default `role="img"` would present the map as one flat
+  // picture and hide the systems inside it from assistive technology. The
+  // title still names it, and the navigation panel makes every system
+  // reachable from the keyboard.
+  return svgDocument(view, `${layers}\n${marker}`, { title: 'Galaxy map', role: false })
 }

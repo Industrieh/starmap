@@ -11,7 +11,7 @@ export const toc: readonly TocEntry[] = [
   { id: 'map', title: 'The map', depth: 2 },
   { id: 'dependencies', title: 'Which module knows what', depth: 2 },
   { id: 'normalization', title: 'Normalization', depth: 2 },
-  { id: 'validation', title: 'Validation, in four passes', depth: 2 },
+  { id: 'validation', title: 'Validation, in five passes', depth: 2 },
   { id: 'invariants', title: 'Invariants', depth: 2 },
   { id: 'contributing', title: 'Adding something', depth: 2 },
 ]
@@ -39,6 +39,7 @@ export default function Content(): JSX.Element {
     types.ts        the data contract: what you get back
     input.ts        the input schema: what you pass in
     create.ts       normalization — the entry point
+    format.ts       FORMAT_VERSION, read by create and validate alike
     validate.ts     checking, and the error type
     query.ts        indexes, neighbours, connectivity, routes
     geometry.ts     orbital positions
@@ -74,13 +75,24 @@ export default function Content(): JSX.Element {
             description: 'Entirely standalone. Usable without touching a galaxy at all.',
           },
           {
+            name: 'format.ts',
+            type: 'imports nothing',
+            description: (
+              <>
+                One constant, <C>FORMAT_VERSION</C>. A module of its own because both ends read it —{' '}
+                <C>create.ts</C> stamps it, <C>validate.ts</C> checks it — and in either of them it
+                would make the two import each other.
+              </>
+            ),
+          },
+          {
             name: 'validate.ts',
-            type: 'types.ts',
+            type: 'types, format',
             description: 'Reads a finished galaxy. Never builds one.',
           },
           {
             name: 'create.ts',
-            type: 'input, types, geometry, validate',
+            type: 'input, types, geometry, validate, format',
             description: 'The only module that composes the others.',
           },
           {
@@ -100,7 +112,10 @@ export default function Content(): JSX.Element {
       <H2 id="normalization">Normalization</H2>
       <P>
         <C>create.ts</C> is a series of small <C>normalizeX()</C> functions, one per object kind,
-        each taking the input shape and returning the output shape. They all obey one rule:
+        each taking the input shape and returning the output shape. Collections go through{' '}
+        <C>normalizeList()</C>, which leaves anything of the wrong shape — a planet that is not an
+        object, <C>planets</C> that is not an array — untouched for validation to report with its
+        path, rather than crashing on it. They all obey one rule:
       </P>
 
       <CodeBlock
@@ -116,7 +131,7 @@ export default function Content(): JSX.Element {
     orbit: input.orbit,
     angle: input.angle ?? 0,        // a default that means "does not move"
     period: input.period ?? 0,
-    stations: (input.stations ?? []).map((s, i) => normalizeStation(s, id, i)),
+    stations: normalizeList(input.stations, (s, i) => normalizeStation(s, id, i)),
   }
 }`}
       />
@@ -128,8 +143,9 @@ export default function Content(): JSX.Element {
           <strong>
             <C>outerLimit</C> has no margin.
           </strong>{' '}
-          It is exactly how far the outermost object reaches. A margin would be an arbitrary number,
-          and an arbitrary number in a library is a number every user has to work around.
+          It is exactly how far the outermost object reaches — a station past its planet, a rock
+          past its field, included. A margin would be an arbitrary number, and an arbitrary number
+          in a library is a number every user has to work around.
         </LI>
         <LI>
           <strong>Derived ids can collide.</strong> Nothing renames them silently — validation
@@ -137,12 +153,13 @@ export default function Content(): JSX.Element {
           your objects would be worse.
         </LI>
         <LI>
-          <strong>Rounding happens at two places only</strong> — lane lengths and <C>outerLimit</C>{' '}
-          — because both end up in JSON. Nothing is rounded mid-computation.
+          <strong>Rounding happens at three places only</strong> — lane lengths, <C>outerLimit</C>{' '}
+          and <C>meta.galaxyRadius</C> — because all three end up in JSON. Nothing is rounded
+          mid-computation.
         </LI>
       </UL>
 
-      <H2 id="validation">Validation, in four passes</H2>
+      <H2 id="validation">Validation, in five passes</H2>
       <P>
         <C>validate.ts</C> runs in a fixed order, and the order is what makes cross-references
         checkable.
@@ -150,6 +167,12 @@ export default function Content(): JSX.Element {
 
       <PropsTable
         rows={[
+          {
+            name: '0. Format',
+            type: 'meta.formatVersion',
+            description:
+              'A galaxy built for another FORMAT_VERSION gets one issue, and the passes below are skipped — its shape belongs to another contract, and a list of every break would bury the one message that matters.',
+          },
           {
             name: '1. Index',
             type: 'id → { kind, systemId }',
@@ -160,7 +183,7 @@ export default function Content(): JSX.Element {
             name: '2. Systems',
             type: 'per-system checks',
             description:
-              'Types, ranges, and the references inside each system — local routes, gate links.',
+              'Shapes, types, ranges, and the references inside each system — local routes (unique ids, no self-links), gate links.',
           },
           {
             name: '3. Lanes',
@@ -177,10 +200,10 @@ export default function Content(): JSX.Element {
         ]}
       />
 
-      <Callout tone="note" title="Hyperlane ids are not in the index">
+      <Callout tone="note" title="Hyperlane and local route ids are not in the index">
         They count towards global uniqueness, but they are not <em>referenceable objects</em> —
         otherwise a gate could claim to &ldquo;reach&rdquo; a hyperlane, and a local route could
-        point at one. They live in a separate set for the uniqueness check only.
+        point at another route. They live in a separate set for the uniqueness check only.
       </Callout>
 
       <H2 id="invariants">Invariants</H2>
@@ -190,7 +213,7 @@ export default function Content(): JSX.Element {
       </P>
 
       <UL>
-        <LI>every id is unique across the whole galaxy, hyperlanes included;</LI>
+        <LI>every id is unique across the whole galaxy, hyperlanes and local routes included;</LI>
         <LI>
           every collection exists — <C>planets</C>, <C>gates</C>, <C>stations</C>,{' '}
           <C>asteroidFields</C>, <C>localRoutes</C>, <C>rocks</C>, <C>links</C> are arrays, never{' '}
@@ -244,7 +267,7 @@ export default function Content(): JSX.Element {
           a position in <C>systemPositions()</C>, if it has one;
         </LI>
         <LI>
-          a counter in <C>meta</C>, and its check in the fourth validation pass.
+          a counter in <C>meta</C>, and its check in the meta pass.
         </LI>
       </UL>
 

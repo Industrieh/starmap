@@ -5,7 +5,8 @@ import { Callout } from '@/components/docs/callout'
 import { PackageManagerTabs } from '@/components/docs/package-manager-tabs'
 import { A, C, H2, LI, Lead, P, UL } from '@/components/docs/prose'
 import type { TocEntry } from '@/content/registry'
-import { LIBRARIES, routes } from '@/lib/routes'
+import { routes } from '@/lib/routes'
+import { versionOf } from '@/lib/versions'
 
 export const toc: readonly TocEntry[] = [
   { id: 'install', title: 'Install it', depth: 2 },
@@ -39,8 +40,9 @@ export default function Content(): JSX.Element {
 
       <UL>
         <LI>
-          <strong>Any JavaScript runtime.</strong> Browser, Node, Bun, Deno, a Web Worker, a server,
-          React Native, or inside a game engine. The same code runs everywhere.
+          <strong>Any JavaScript runtime.</strong> Browser, Node 18 or later, Bun, Deno, a Web
+          Worker, a server, React Native, or inside a game engine. The same code runs everywhere —
+          it sticks to ES2022 built-ins, so nothing newer than Node 18 ships is ever called.
         </LI>
         <LI>
           <strong>ES modules.</strong> The package ships ESM only, with type declarations alongside.
@@ -106,7 +108,7 @@ export default function Content(): JSX.Element {
 
       <Callout tone="tip" title="Pin the version in production">
         A bare CDN URL follows the latest release, which is exactly what you do not want in
-        something you ship. Add the version — <C>@industrieh/starmap@{LIBRARIES[0].version}</C> —
+        something you ship. Add the version — <C>@industrieh/starmap@{versionOf('starmap')}</C> —
         once the sketch becomes real.
       </Callout>
 

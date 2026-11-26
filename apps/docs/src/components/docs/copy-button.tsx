@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckIcon, CopyIcon } from 'lucide-react'
+import { CheckIcon, CopyIcon, XIcon } from 'lucide-react'
 import { useEffect, useState, type JSX } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -17,27 +17,37 @@ export function CopyButton({
   value: string
   className?: string
 }): JSX.Element {
-  const [copied, setCopied] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
 
-  // Reset the tick after a moment. The timer is cleared on unmount, and on a
+  // Back to idle after a moment. The timer is cleared on unmount, and on a
   // second click, so a fast double-copy cannot leave the button stuck.
   useEffect(() => {
-    if (!copied) return
-    const timer = setTimeout(() => setCopied(false), 2000)
+    if (status === 'idle') return
+    const timer = setTimeout(() => setStatus('idle'), 2000)
     return () => clearTimeout(timer)
-  }, [copied])
+  }, [status])
 
   return (
     <Button
       variant="ghost"
       size="icon-xs"
-      aria-label={copied ? 'Copied' : 'Copy code'}
+      aria-label={
+        status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : 'Copy code'
+      }
       className={cn('text-muted-foreground hover:text-foreground', className)}
       onClick={() => {
-        void navigator.clipboard.writeText(value).then(() => setCopied(true))
+        // The clipboard can refuse: no permission, an insecure origin, a
+        // browser without the API. Say so on the button rather than leaving an
+        // unhandled rejection and a click that silently did nothing.
+        void Promise.resolve()
+          .then(() => navigator.clipboard.writeText(value))
+          .then(
+            () => setStatus('copied'),
+            () => setStatus('failed'),
+          )
       }}
     >
-      {copied ? <CheckIcon /> : <CopyIcon />}
+      {status === 'copied' ? <CheckIcon /> : status === 'failed' ? <XIcon /> : <CopyIcon />}
     </Button>
   )
 }

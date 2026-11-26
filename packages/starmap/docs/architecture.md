@@ -34,6 +34,7 @@ packages/starmap/
       types.ts        the output contract: Galaxy and everything in it
       input.ts        the input schema: GalaxyInput and everything in it
       create.ts       createGalaxy() and normalization
+      format.ts       FORMAT_VERSION, read by create.ts and validate.ts
       validate.ts     validateGalaxy(), assertValidGalaxy(), the error class
       geometry.ts     orbital positions at time t
       query.ts        indexes, neighbours, connectivity, routes
@@ -42,27 +43,32 @@ packages/starmap/
     fixture.ts        one hand-written universe, shared by the tests
     creation.test.ts  what normalization fills in and leaves alone
     validation.test.ts what is rejected and what is accepted
+    robustness.test.ts malformed input, and a deterministic fuzzer
     queries.test.ts   indexes, routes, connectivity, positions
+    rng.test.ts       the generator, and the values the docs print
     purity.test.ts    the house rule, checked file by file
   docs/               data-model, recipes, design, this file
 ```
 
-Around 1200 lines of source. Every file in `core/` is standalone except for the
+Around 1700 lines of source, comments included. Every file in `core/` is standalone except for the
 dependencies drawn below.
 
 ```
 index.ts ──► create.ts ──► input.ts ──► types.ts
                  │
+                 ├──► format.ts (depends on nothing)
                  ├──► geometry.ts (round) ──► types.ts
-                 └──► validate.ts ──────────► types.ts
+                 └──► validate.ts ──► format.ts, types.ts
 
          ──► query.ts ────────────────────► types.ts
          ──► rng.ts   (depends on nothing)
 ```
 
-`rng.ts` imports nothing. `query.ts` and `geometry.ts` import only types. The
-graph has no cycles and never will: `types.ts` is at the bottom and imports
-nothing.
+`rng.ts` and `format.ts` import nothing. `query.ts` and `geometry.ts` import
+only types. The graph has no cycles and never will: `types.ts` is at the bottom
+and imports nothing — and `FORMAT_VERSION` lives in a module of its own precisely
+so that `create.ts` and `validate.ts`, which both read it, do not import each
+other.
 
 ## The pipeline
 
@@ -97,6 +103,11 @@ length = a && b ? round(Math.hypot(b.x - a.x, b.y - a.y)) : 0
 If normalization threw on the first missing field, you would get one error at a
 time. Instead it builds a galaxy that may be wrong, and validation reports
 **every** problem at once.
+
+The same goes for shapes. `normalizeList()` maps an optional collection entry by
+entry, but a collection that is not an array, or an entry that is not an object,
+is passed through untouched — normalizing it would mean guessing. Validation
+then reports it with its path (`systems[0].planets: expected an array`).
 
 The only thing `createGalaxy()` throws by itself is a `TypeError`, when the
 argument is not an object with a `systems` array. There is nothing to normalize
@@ -175,8 +186,10 @@ edit.
 ## `create.ts` — normalization
 
 `createGalaxy()` is 30 lines: normalize the systems, normalize the lanes against
-a `Map` of the systems, count everything into `meta`, then validate unless the
-caller opted out.
+a `Map` of the systems, count everything into `meta` with `countContents()` —
+the same function validation checks the counters with, so the two can never
+disagree — then validate unless the caller opted out. Every object and array is
+a copy, rocks included: the galaxy shares nothing with the input.
 
 Below it, one `normalizeX` function per object kind. They all have the same
 shape — take the input, take the parent id and the array index, return the
@@ -209,10 +222,12 @@ validation, not patched up silently.
 `outerLimitOf()` returns how far a system's contents reach, with no margin:
 
 ```ts
-max(star.radius, planet.orbit + planet.radius, gate.orbit, field reach)
+max(star.radius, planet.orbit + planet.radius, planet.orbit + station.orbit,
+    gate.orbit, field reach, rock reach)
 ```
 
-A belt reaches `orbit + width / 2`; a cluster reaches `hypot(x, y) + radius`.
+A belt reaches `orbit + width / 2`; a cluster reaches `hypot(x, y) + radius`; a
+rock reaches `hypot(x, y) + r`.
 Non-finite values are filtered out, so a broken input still produces a number
 and validation gets to report the real problem. An `outerLimit` you provide is
 kept as is.
@@ -240,39 +255,50 @@ The paths are built by string concatenation as the walk descends. There is no
 schema library and no reflection: the checks are hand-written, which is why the
 messages read the way they do.
 
-### The four passes
+### The passes
 
+0. **Check the format.** A finite `meta.formatVersion` other than
+   `FORMAT_VERSION` is reported on its own, and the walk stops there: a galaxy
+   built for another contract is expected to break every rule below.
 1. **Claim every id.** One `Map<string, { kind, systemId }>` named `owners`,
    built over systems, stars, planets, stations, gates and fields. A second
    claim on the same id is a duplicate. This map is what later passes use to
    resolve references.
-2. **Check each system's contents.** Types, ranges, and `planet.index` against
-   the real array position.
+2. **Check each system's contents.** Types, ranges, `planet.index` against the
+   real array position, and the local routes — their ids, their two ends, and
+   that the two ends differ.
 3. **Check the network.** Lane ids, endpoints, self-links, duplicate pairs,
-   lengths.
+   lengths. A `lanes` that is not an array is reported, and the systems are still
+   checked.
 4. **Check `meta`.** Every counter is recomputed from the contents and compared.
 
 Pass 1 has to finish before pass 2 starts, because a gate in the first system
 may link to the last one.
 
-### Lane ids are not in `owners`
+### Link ids are not in `owners`
 
-Hyperlane ids count towards global uniqueness but live in their own `Set`:
+Local route and hyperlane ids count towards global uniqueness but live in their
+own `Set`, through `claimLink()`:
 
 ```ts
-if (owners.has(l.id) || laneIds.has(l.id)) add(`${p}.id`, `duplicate id: "${l.id}"`)
-else laneIds.add(l.id)
+if (owners.has(id) || links.has(id)) add(`${path}.id`, `duplicate id: "${id}"`)
+else links.add(id)
 ```
 
-If lanes were in `owners`, a gate could "link" to a hyperlane and pass the
-check. Keeping them separate makes that impossible.
+If they were in `owners`, a gate could "link" to a hyperlane and pass the check.
+Keeping them separate makes that impossible.
+
+A duplicate pair of systems is keyed by `JSON.stringify` of the two ids in order,
+so ids containing any separator — `a|b` and `c` against `a` and `b|c` — can
+never be mistaken for one another.
 
 ### The small helpers
 
-`number()`, `optionalNumber()`, `text()`, `isId()` and `each()` are the whole
-vocabulary. `each()` returns `[]` for anything that is not an array, so the walk
-never crashes on malformed input — the missing array is reported by its own
-check.
+`number()`, `optionalNumber()`, `text()`, `isId()`, `isObject()` and `each()`
+are the whole vocabulary. `each()` returns `[]` for anything that is not an
+array, and `isObject()` refuses `null` and arrays, so the walk never crashes on
+malformed input — the bad value is reported by its own check.
+`tests/robustness.test.ts` holds that promise with a deterministic fuzzer.
 
 `checkRef()` is the one with a rule you might not expect: a local route may only
 point at objects **in its own system**. A route from a gate in `sol` to a
@@ -316,16 +342,17 @@ A `Galaxy` is a tree, which is good for serializing and bad for lookups. These
 helpers build the lookups a game needs constantly. Every one of them walks the
 whole structure, so callers build an index once and keep it.
 
-| function              | cost                          |
-| --------------------- | ----------------------------- |
-| `indexSystems`        | one pass over the systems     |
-| `indexGalaxy`         | one pass over everything      |
-| `lanesOf`             | one pass over the lanes       |
-| `neighboursOf`        | builds an index, then filters |
-| `stationsOf`          | one pass over one system      |
-| `systemOf`            | two lookups, index or not     |
-| `connectedComponents` | BFS over the whole network    |
-| `findRoute`           | Dijkstra, see below           |
+| function              | cost with a `Galaxy`                 | with an index       |
+| --------------------- | ------------------------------------ | ------------------- |
+| `indexSystems`        | one pass over the systems            | —                   |
+| `indexGalaxy`         | one pass over everything             | —                   |
+| `indexNetwork`        | one pass over systems and lanes      | —                   |
+| `lanesOf`             | one pass over the lanes              | one lookup          |
+| `neighboursOf`        | indexes the network, then one lookup | one lookup          |
+| `stationsOf`          | one pass over one system             | —                   |
+| `systemOf`            | indexes everything, two lookups      | two lookups         |
+| `connectedComponents` | indexes the network, then a DFS      | a DFS               |
+| `findRoute`           | indexes the network, then Dijkstra   | Dijkstra, see below |
 
 `IndexEntry` is a discriminated union on `kind`, so `entry.kind === 'station'`
 narrows `entry.obj` to `Station` with no cast.
@@ -337,21 +364,30 @@ galaxy for a one-off call, an index you already built for a render loop. The two
 are told apart by `Array.isArray(source.systems)`, not `instanceof Map`, which
 would fail on a map built in another realm.
 
-`connectedComponents` builds an adjacency map, flood-fills from each unseen
-system, and returns the groups largest first. A healthy galaxy returns exactly
+`indexNetwork` builds the one structure the network helpers share: `id →
+system`, and `id → the lanes touching it`, both in the galaxy's order. Each of
+them accepts it in place of the galaxy, told apart the same way as above.
+
+`connectedComponents` flood-fills from each unseen system, skipping lanes to
+systems that do not exist, and returns the groups largest first. A healthy galaxy returns exactly
 one. The library never calls this itself: a split network is a design choice,
 and the check is yours to run.
 
-`findRoute` is Dijkstra with a naive priority queue — a linear scan over a
-`Set` of pending systems. That is `O(n²)`, fine up to a few thousand systems. If
-that ever becomes the bottleneck, the fix is to index the graph once and swap
-the scan for a binary heap; the signature does not have to change.
+`findRoute` is Dijkstra with a binary heap of `[distance, rank, id]` entries:
+`O((V + E) log V)`. A system is queued once per improvement and only its first,
+shortest entry counts. `rank` is the system's position in the galaxy, so among
+equally short routes the one returned never depends on the heap's internals —
+it is the one a linear scan in galaxy order would have found.
 
 ## `rng.ts` — deterministic randomness
 
 `hashSeed()` is FNV-1a: any string becomes an unsigned 32-bit integer.
 `mulberry32()` turns that integer into a generator. `createRng()` puts the two
-together and adds `rand`, `randInt`, `pick`, `chance` and `weighted`.
+together and adds `rand`, `randInt`, `pick`, `chance`, `weighted` and `fork`.
+`pick` and `weighted` throw a `RangeError` before drawing when nothing can be
+picked, so a failed call leaves the sequence untouched. `fork(label)` is
+``createRng(`${seed}:${label}`)``: it depends on the seed alone, never on how
+many draws were made.
 
 It is not cryptographic, and it is not meant to be. It is 32 bits of state, very
 fast, and good enough for content generation.
@@ -382,8 +418,8 @@ it.
 
 The code relies on these. Break one and something downstream breaks quietly.
 
-- **Ids are unique across the whole galaxy**, hyperlanes included. Indexing,
-  references and routing all assume it.
+- **Ids are unique across the whole galaxy**, local routes and hyperlanes
+  included. Indexing, references and routing all assume it.
 - **`planet.index` equals its position in the array.** Validation checks it.
 - **`station.planetId` points at its parent planet.** Validation checks it.
 - **A star sits at `(0, 0)`.** All system coordinates are relative to it.
@@ -444,7 +480,7 @@ fires.
 | add or relax a check              | `validate.ts`, `validation.test.ts`, `docs/design.md`                    |
 | add a query helper                | `query.ts`, `index.ts`, `queries.test.ts`, the API table in the README   |
 | change the orbital model          | `geometry.ts`, `queries.test.ts`, the conventions table in the README    |
-| add a PRNG method                 | `rng.ts`, `index.ts`, `docs/recipes.md`                                  |
-| break the shape of a saved galaxy | `FORMAT_VERSION` in `create.ts`, plus everything above                   |
+| add a PRNG method                 | `rng.ts`, `index.ts`, `rng.test.ts`, `docs/recipes.md`                   |
+| break the shape of a saved galaxy | `FORMAT_VERSION` in `format.ts`, plus everything above                   |
 
 The checklists for each of these are in [CONTRIBUTING.md](../CONTRIBUTING.md).

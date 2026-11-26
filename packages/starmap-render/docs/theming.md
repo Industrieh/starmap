@@ -33,6 +33,10 @@ const theme = resolveTheme({ background: '#000' })
 renderSystem(system, { theme })
 ```
 
+A theme `resolveTheme()` returned is recognised and used as is — no merge at
+all on the next call. Treat it as read-only: it is the very object every frame
+draws with.
+
 Merging goes one level deep. A table you pass is merged **key by key**, so
 overriding one planet colour keeps the other ten:
 
@@ -87,6 +91,17 @@ optional in the model, and a drawing still has to put something on screen.
 | `gateUnstable` | the ring around a gate whose `status` is `unstable` |
 | `field`        | the outline of a belt or a cluster                  |
 | `rock`         | the rocks inside them                               |
+| `light`        | a star's core, a planet's lit side, a system's glow |
+| `shade`        | a planet's dark side                                |
+
+One field is a list rather than a colour: `ringed`, the planet types drawn with
+a ring when they have three moons or more — `['gas', 'ice-giant']` by default.
+Your vocabulary is yours, so list your own types; a theme that sets it replaces
+the list whole.
+
+A lookup only ever reads a table's **own** keys. A planet type named
+`constructor` or `toString` falls back to `default` like any unknown type,
+instead of picking up what `Object.prototype` holds.
 
 ## Route styles
 
@@ -96,9 +111,10 @@ A route style is three fields:
 { stroke: '#5f7fa8', dash: '6 8', width: 1.1 }
 ```
 
-`dash` is an SVG `stroke-dasharray`, and each route type gets a distinct
-pattern on purpose: the map stays readable in greyscale, and to a colourblind
-reader.
+`dash` is an SVG `stroke-dasharray` — lengths separated by spaces, commas, or
+both — and each route type gets a distinct pattern on purpose: the map stays
+readable in greyscale, and to a colourblind reader. An empty pattern, `none`, or
+anything that is not a list of non-negative numbers draws a solid line.
 
 `width` and the dash lengths are scaled with the view before they are written
 out, so a route stays a thin line in a system of any size. Think of them as
@@ -121,6 +137,9 @@ DEFAULT_THEME = {
   gateUnstable: '#ff6b81',
   field: '#6b5a2a',
   rock: '#a89468',
+  light: '#ffffff',
+  shade: '#000000',
+  ringed: ['gas', 'ice-giant'],
 
   stars: {
     O: '#9bb0ff',
@@ -183,9 +202,9 @@ freely.
 
 ## A light theme
 
-Nothing in the package assumes a dark background. The one thing to remember is
-that the star halo and the planet shading are drawn with fixed white and black
-gradients, so a very light background flattens the star.
+Nothing in the package assumes a dark background. The gradients that give stars
+and planets their volume use `light` and `shade`, so a light theme can soften
+them — pure white on a pale background flattens the star.
 
 ```ts
 const light = resolveTheme({
@@ -197,6 +216,8 @@ const light = resolveTheme({
   lane: '#a9b6cf',
   field: '#d8c89a',
   rock: '#b8a274',
+  light: '#fff6d8',
+  shade: '#2a3145',
 })
 ```
 

@@ -1,8 +1,6 @@
 import Link from 'next/link'
 import type { ComponentProps, JSX, ReactNode } from 'react'
 
-import { cn } from '@/lib/utils'
-
 /**
  * The typographic primitives of a documentation page.
  *
@@ -105,15 +103,4 @@ export function Quote({ children }: { children: ReactNode }): JSX.Element {
       {children}
     </blockquote>
   )
-}
-
-/** Wraps a whole page. Nothing but width and rhythm. */
-export function Prose({
-  children,
-  className,
-}: {
-  children: ReactNode
-  className?: string
-}): JSX.Element {
-  return <div className={cn('max-w-none', className)}>{children}</div>
 }

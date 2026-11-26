@@ -11,10 +11,16 @@
  * deliberately small — its source is printed next to the drawings, and a fixture
  * nobody can read teaches nothing.
  *
- * **These modules resolve to the packages' `dist/`**, not to their sources, so a
- * change to the renderer only shows up here after `bun run build` in that
- * package. The root `bun run build` orders it correctly; `bun run docs` on a
- * stale `dist/` will not.
+ * **These modules resolve to the packages' sources**, through the `paths` of this
+ * app's `tsconfig.json`, which Next.js follows. A change to the renderer shows up
+ * here at the next reload of `bun run docs` — there is no package to build first,
+ * and no stale `dist/` to draw yesterday's renderer.
+ *
+ * `FIXTURE_SOURCE` and `GALAXY` are the same universe written twice — once as
+ * text to print, once as code to run — so the module checks, when it loads, that
+ * the text still builds exactly that galaxy. Edit one without the other and the
+ * build fails here, instead of a page printing a source that is not the one its
+ * drawings came from.
  */
 
 import { createGalaxy, type Galaxy, type StarSystem } from '@industrieh/starmap'
@@ -116,6 +122,31 @@ export const GALAXY: Galaxy = createGalaxy({
     { from: 'rigel', to: 'lyra' },
   ],
 })
+
+/**
+ * The guard described at the top: run the printed source, compare the result.
+ *
+ * The object literal is cut out of the text and evaluated as plain JavaScript —
+ * it is a literal, with no import or variable in it, so that is all it needs.
+ * This runs once per build, on our own string, never on anything a reader sent.
+ */
+function assertSourceBuildsGalaxy(): void {
+  const start = FIXTURE_SOURCE.indexOf('createGalaxy(')
+  const end = FIXTURE_SOURCE.lastIndexOf(')')
+  if (start === -1 || end <= start) {
+    throw new Error('fixture.ts: FIXTURE_SOURCE no longer reads `createGalaxy({ … })`')
+  }
+  const literal = FIXTURE_SOURCE.slice(start + 'createGalaxy('.length, end)
+  const input = new Function(`return (${literal})`)() as Parameters<typeof createGalaxy>[0]
+
+  if (JSON.stringify(createGalaxy(input)) !== JSON.stringify(GALAXY)) {
+    throw new Error(
+      'fixture.ts: FIXTURE_SOURCE and GALAXY describe different universes — edit both together',
+    )
+  }
+}
+
+assertSourceBuildsGalaxy()
 
 /** The system carrying one of everything. */
 export const SOL: StarSystem = GALAXY.systems[0]

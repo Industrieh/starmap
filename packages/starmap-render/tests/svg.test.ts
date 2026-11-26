@@ -8,6 +8,7 @@
 
 import { describe, expect, test } from 'vitest'
 
+import { idPrefixOf } from '../src/core/svg'
 import { el, escapeXml, group, num, text } from '../src/index'
 
 describe('escapeXml', () => {
@@ -75,5 +76,26 @@ describe('group', () => {
 describe('text', () => {
   test('escapes its content', () => {
     expect(text('Ohm & Sons', { x: 0 })).toBe('<text x="0">Ohm &amp; Sons</text>')
+  })
+})
+
+describe('characters XML cannot hold', () => {
+  test('control characters are dropped, tab and line breaks are kept', () => {
+    expect(escapeXml('Bad\u0001Na\u001Fme￾')).toBe('BadName')
+    expect(escapeXml('a\tb\nc\rd')).toBe('a\tb\nc\rd')
+  })
+
+  test('so a name full of them still gives well-formed text', () => {
+    expect(text('Sol\u0000 & co', {})).toBe('<text>Sol &amp; co</text>')
+  })
+})
+
+describe('idPrefixOf', () => {
+  test('keeps a safe prefix, repairs any other', () => {
+    expect(idPrefixOf('starmap-sol_2')).toBe('starmap-sol_2')
+    expect(idPrefixOf('alpha centauri')).toBe('alpha_centauri')
+    expect(idPrefixOf('a"b(c)')).toBe('a_b_c_')
+    expect(idPrefixOf('42')).toBe('_42')
+    expect(idPrefixOf('-x')).toBe('_-x')
   })
 })

@@ -1,9 +1,16 @@
-# The check suite: format, lint, types, tests, build.
+# The check suite: format, lint, types, tests, build — plus the two runtime
+# checks no type checker can make: the examples actually run, and the packages
+# npm users install actually load on every Node version they promise.
 #
 # It runs on every push to `main`, on every pull request, and — through
 # `workflow_call` — as the gate the release workflow has to pass before anything
-# reaches npm. One definition, three triggers: a release can never be published
-# by a laxer set of checks than a pull request had to satisfy.
+# reaches npm, and on the "Version packages" branch (see `version.yml`). One
+# definition, several triggers: a release can never be published by a laxer set
+# of checks than a pull request had to satisfy.
+#
+# Every action is pinned to a full commit SHA, with the version it stands for in
+# a comment. A tag can be moved to point at other code; a commit cannot.
+# Dependabot (`.github/dependabot.yml`) bumps the SHA and the comment together.
 name: CI
 
 on:
@@ -11,11 +18,19 @@ on:
     branches: [main]
   pull_request:
   workflow_call:
+    inputs:
+      ref:
+        description: Branch, tag or SHA to check, instead of the one that triggered the caller.
+        type: string
+        required: false
+        default: ''
 
 # A new push to a branch makes the previous run pointless — cancel it. `main` is
-# left alone: its history is what the release workflow reuses.
+# left alone: its history is what the release workflow reuses. A run called with
+# a `ref` gets a group of its own, so checking the version branch never queues
+# behind — or cancels — the run of the `main` commit that produced it.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ inputs.ref || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
@@ -23,14 +38,18 @@ permissions:
 
 jobs:
   check:
-    name: format · lint · types · tests · build
+    name: format · lint · types · tests · build · examples
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v5
+      # `ref` is empty unless a caller passed one, and an empty `ref` means "the
+      # commit that triggered the run".
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.ref }}
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.11
 
@@ -60,3 +79,84 @@ jobs:
       - name: Build
         if: ${{ !cancelled() }}
         run: bun run build
+
+      # The type checker proves the examples compile; only running them proves
+      # they work. Both write to gitignored folders, if they write at all.
+      - name: Example — basic
+        if: ${{ !cancelled() }}
+        run: bun run example
+
+      - name: Example — SVG generation
+        if: ${{ !cancelled() }}
+        run: bun run example:svg
+
+  # The tests above check the TypeScript sources, on one runtime. What npm users
+  # get is something else: a tarball holding the bundled `dist/`, whose internal
+  # dependency Bun rewrote at pack time, loaded by whatever Node they run — down
+  # to the oldest one `engines.node` allows. A newer built-in that slipped into
+  # the sources passes every test and breaks there.
+  #
+  # So this job packs the two packages the way `bun publish` does, installs the
+  # tarballs into an empty project with npm, and runs `scripts/smoke.mjs` there,
+  # once per Node version.
+  node:
+    name: Node ${{ matrix.node }} · packed packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # The first entry is the floor promised by `engines.node` in
+        # `packages/*/package.json`. Move them together.
+        node: [18, 20, 22, 24]
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.11
+
+      # The build tools — tsdown, TypeScript 7 — need a current Node, whatever
+      # the matrix says. The Node under test only arrives for the smoke test.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Build the packages
+        run: bun run --filter './packages/*' build
+
+      # `bun pm pack` is what `bun publish` uploads: the `files` of each
+      # package, with its `workspace:` ranges rewritten.
+      - name: Pack them
+        run: |
+          mkdir -p "$RUNNER_TEMP/packs"
+          for dir in packages/*/; do
+            (cd "$dir" && bun pm pack --destination "$RUNNER_TEMP/packs" --quiet)
+          done
+          ls -l "$RUNNER_TEMP/packs"
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      # Nothing from the workspace leaks in: an empty project, the tarballs, and
+      # npm — the way a user would install them.
+      - name: Install the tarballs in an empty project
+        run: |
+          mkdir -p "$RUNNER_TEMP/consumer"
+          cd "$RUNNER_TEMP/consumer"
+          npm init --yes > /dev/null
+          npm install --no-audit --no-fund "$RUNNER_TEMP"/packs/*.tgz
+
+      - name: Smoke test
+        run: |
+          cp scripts/smoke.mjs "$RUNNER_TEMP/consumer/"
+          cd "$RUNNER_TEMP/consumer"
+          node smoke.mjs

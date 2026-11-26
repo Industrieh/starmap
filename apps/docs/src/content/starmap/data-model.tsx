@@ -67,16 +67,18 @@ const planet: Planet = {
 
       <Callout tone="note" title="Reading the tables below">
         A field marked <strong>required</strong> must be in your input. A field marked{' '}
-        <strong>derived</strong> is computed by <C>createGalaxy()</C> — writing it yourself is
-        allowed but rarely useful. Anything else is optional and stays <C>undefined</C> if you omit
-        it; the library never invents a value that carries meaning.
+        <strong>derived</strong> is computed by <C>createGalaxy()</C>: a system&apos;s{' '}
+        <C>outerLimit</C> and a lane&apos;s <C>length</C> can also be written, and then your value
+        is kept, while <C>Planet.index</C> and <C>Station.planetId</C> are always computed — the
+        input types have no field for them. Anything else is optional and stays <C>undefined</C> if
+        you omit it; the library never invents a value that carries meaning.
       </Callout>
 
       <H2 id="ids">Ids</H2>
       <P>
         Ids must be unique across the <em>whole</em> galaxy — not per system, not per kind.
-        Hyperlanes count too. That is what lets a single index hold everything, and what lets you
-        store a bare string in a save file.
+        Hyperlanes and local routes count too. That is what lets a single index hold everything, and
+        what lets you store a bare string in a save file.
       </P>
 
       <P>When you leave one out, it is built from the parent id and the array position:</P>
@@ -89,7 +91,8 @@ planet    <systemId>-p<rank>     // 'sol-p0', 'sol-p1'
 station   <planetId>-st<rank>    // 'sol-p1-st0'
 gate      <systemId>-gate<rank>  // 'sol-gate0'
 field     <systemId>-ast<rank>   // 'sol-ast0'
-lane      lane-<from>-<to>       // 'lane-sol-vega'`}
+lane      lane-<from>-<to>       // 'lane-sol-vega'
+route     <fromId>><toId>        // 'sol-p1>sol-p1-st0'`}
       />
 
       <Callout tone="warning" title="Give explicit ids to things you refer to by name">
@@ -174,7 +177,8 @@ lane      lane-<from>-<to>       // 'lane-sol-vega'`}
             derived: true,
             description: (
               <>
-                The system&apos;s edge. Defaults to how far its own contents reach —{' '}
+                The system&apos;s edge. Defaults to how far its own contents reach — the star, the
+                planets and their stations, the gates, the asteroid fields and their rocks —{' '}
                 <strong>with no margin</strong>. Set it yourself if you want empty space past the
                 outermost object.
               </>
@@ -315,7 +319,12 @@ lane      lane-<from>-<to>       // 'lane-sol-vega'`}
               </>
             ),
           },
-          { name: 'docks', type: 'number', description: 'Free-form. Never read.' },
+          {
+            name: 'docks',
+            type: 'number',
+            description:
+              'Free-form: the library never interprets it. Validation only checks that it is a number, 0 or more.',
+          },
         ]}
       />
 
@@ -428,7 +437,8 @@ lane      lane-<from>-<to>       // 'lane-sol-vega'`}
             type: 'number',
             description: (
               <>
-                <C>0</C> to <C>1</C>. A hint for your own logic — yield, danger. Never read.
+                <C>0</C> to <C>1</C>, checked by validation. A hint for your own logic — yield,
+                danger; the library never interprets it.
               </>
             ),
           },
@@ -526,16 +536,19 @@ lane      lane-<from>-<to>       // 'lane-sol-vega'`}
       />
 
       <Callout tone="note" title="formatVersion is your save-compatibility check">
-        It records the shape of the data at the time the galaxy was built. Compare it to the current{' '}
-        <C>FORMAT_VERSION</C> when loading a save and you will know the contract moved on before you
-        hit a missing field.
+        It records the shape of the data at the time the galaxy was built, and{' '}
+        <C>validateGalaxy()</C> compares it to the current <C>FORMAT_VERSION</C>: a save built for
+        another format comes back as a single issue on <C>meta.formatVersion</C>, with nothing else
+        checked. You know the contract moved on before you hit a missing field.
       </Callout>
 
       <H2 id="local-route">Local route</H2>
       <P>
         A link between two objects <em>inside the same system</em> — a docking approach, a mining
         run, a shortcut. Both ends are <C>{`{ kind, id }`}</C> references, and validation checks
-        three things: the id exists, the kind matches, and both ends belong to this system.
+        that each id exists, that its kind matches, that both ends belong to this system, and that
+        they are two different objects. The route&apos;s own id — <C>{'<fromId>><toId>'}</C> by
+        default — is unique across the galaxy, like every other.
       </P>
 
       <CodeBlock

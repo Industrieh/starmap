@@ -1,5 +1,11 @@
 import { findRoute } from '@industrieh/starmap'
-import { renderGalaxy, renderSystem } from '@industrieh/starmap-render'
+import {
+  renderGalaxy,
+  renderSystem,
+  SYSTEM_MARGIN,
+  systemViewBox,
+  viewBoxAttr,
+} from '@industrieh/starmap-render'
 import type { JSX } from 'react'
 
 import { CodeBlock } from '@/components/code-block'
@@ -10,13 +16,15 @@ import { Step, Steps } from '@/components/docs/steps'
 import type { TocEntry } from '@/content/registry'
 import { FIXTURE_SOURCE, GALAXY, SOL } from '@/content/starmap-render/fixture'
 import { routes } from '@/lib/routes'
+import { outlineSvg } from '@/lib/svg-outline'
 
 /**
  * Every drawing on this page, rendered at build time.
  *
- * `idPrefix` differs on each one because SVG ids are global to the page — two
- * drawings sharing a prefix would both use the first one's gradients. It is the
- * trap documented on the Framing page, and it applies here too.
+ * Each names its own `idPrefix`. A system's default prefix comes from its id, so
+ * two *different* systems never collide — but these all draw the same Sol, one of
+ * them recoloured, and the same system twice on a page is exactly the case where
+ * two drawings would share gradient ids (see the Framing page).
  */
 const FIRST = renderSystem(SOL, { t: 3, idPrefix: 'qs-first' })
 const MOVED = renderSystem(SOL, { t: 16, idPrefix: 'qs-moved' })
@@ -29,6 +37,15 @@ const RECOLOURED = renderSystem(SOL, {
   idPrefix: 'qs-recoloured',
   theme: { background: '#0b0f0d', planets: { terran: '#7ee787', rocky: '#8b949e' } },
 })
+
+/**
+ * "What came out", folded from the real output of the very call the page shows
+ * — `renderSystem(galaxy.systems[0], { t: 3 })` — rather than typed next to it.
+ * The planets layer is opened one level, to show the objects inside a layer.
+ */
+const LISTING = outlineSvg(renderSystem(SOL, { t: 3 }), (tag) =>
+  tag.includes('data-layer="planets"'),
+)
 
 export const toc: readonly TocEntry[] = [
   { id: 'mental-model', title: 'The mental model', depth: 2 },
@@ -101,6 +118,7 @@ const svg = renderSystem(galaxy.systems[0], { t: 3 })`}
           />
           <RenderPreview
             svg={FIRST}
+            alt="The Sol system at t = 3: a yellow star, two planets on their orbits, an asteroid belt, a cluster and a gate."
             height="lg"
             caption="That string, rendered. Every drawing on this page was produced by the call above it while the page was being built — none of them is a screenshot."
           />
@@ -134,24 +152,12 @@ return new Response(svg, { headers: { 'content-type': 'image/svg+xml' } })`}
       </Steps>
 
       <H2 id="inside">What came out</H2>
-      <P>Open the string and it is readable. Here is how it starts:</P>
+      <P>
+        Open the string and it is readable. Here it is, with the content of each layer folded away —
+        the real output of the call above, not a retyped copy:
+      </P>
 
-      <CodeBlock
-        lang="ts"
-        noCopy
-        code={`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-435 -435 870 870"
-     width="700" height="700" preserveAspectRatio="xMidYMid meet" role="img">
-<title>Sol</title>
-<defs>…</defs>
-<rect x="-1305" y="-1305" width="2610" height="2610" fill="#070b16"/>
-<g data-layer="backdrop">…</g>
-<g data-layer="orbits">…</g>
-<g data-layer="planets">
-  <g data-kind="planet" data-id="sol-p1">…</g>
-</g>
-<g data-layer="gates">…</g>
-</svg>`}
-      />
+      <CodeBlock lang="xml" noCopy code={LISTING} />
 
       <P>Three things in there are worth noticing right away.</P>
 
@@ -159,9 +165,10 @@ return new Response(svg, { headers: { 'content-type': 'image/svg+xml' } })`}
         <strong>
           The <C>viewBox</C> is in world units, not pixels.
         </strong>{' '}
-        Sol&apos;s <C>outerLimit</C> is <C>300</C>, and the default margin adds 45% — hence{' '}
-        <C>-435 -435 870 870</C>. Nothing in this package is ever converted to pixels, which is
-        exactly why the same string works as a 32-pixel thumbnail and as a full-screen map.
+        Sol&apos;s <C>outerLimit</C> is <C>{SOL.outerLimit}</C>, and the default margin adds{' '}
+        {Math.round(SYSTEM_MARGIN * 100)}% — hence <C>{viewBoxAttr(systemViewBox(SOL))}</C>. Nothing
+        in this package is ever converted to pixels, which is exactly why the same string works as a
+        32-pixel thumbnail and as a full-screen map.
       </P>
 
       <P>
@@ -172,8 +179,9 @@ return new Response(svg, { headers: { 'content-type': 'image/svg+xml' } })`}
 
       <P>
         <strong>Empty layers do not exist.</strong> A system with no asteroid fields produces no{' '}
-        <C>fields</C> group at all, rather than an empty one. In the document above there is no{' '}
-        <C>routes</C> layer, because that system declares no local routes.
+        <C>fields</C> group at all, rather than an empty one. Sol has something in every layer, so
+        all of them are above; Rigel, which has nothing but its star, comes out as the gradients,
+        the background, the backdrop and the star — and nothing else.
       </P>
 
       <H2 id="move">Make it move</H2>
@@ -203,9 +211,14 @@ frame()`}
       />
 
       <RenderCompare
-        left={{ svg: FIRST, label: <>The same system at t = 3.</> }}
+        left={{
+          svg: FIRST,
+          alt: 'The Sol system at t = 3.',
+          label: <>The same system at t = 3.</>,
+        }}
         right={{
           svg: MOVED,
+          alt: 'The Sol system at t = 16: the planets and the station have moved along their orbits.',
           label: (
             <>
               And at t = 16 — Aurelia has come round, Vesper has moved on, and its station went with
@@ -224,8 +237,11 @@ frame()`}
 
       <Callout tone="warning" title="Rebuilding a string every frame is not free">
         It is fine for one system at sixty frames a second, and it is not fine for a dozen. If you
-        get there, keep the SVG in the DOM and move the groups by their <C>data-id</C> instead of
-        re-rendering — <A href={routes.page('starmap-render', 'recipes')}>Recipes</A> shows both.
+        get there, redraw only what moves — the <C>layers</C> option draws just <C>routes</C> and{' '}
+        <C>planets</C>, the only two that depend on <C>t</C> — or keep the SVG in the DOM and move
+        the groups by their <C>data-id</C>.{' '}
+        <A href={`${routes.page('starmap-render', 'interactivity')}#perf`}>Making it interactive</A>{' '}
+        shows both.
       </Callout>
 
       <H2 id="galaxy">Draw the whole map</H2>
@@ -240,7 +256,7 @@ frame()`}
         code={`import { findRoute } from '@industrieh/starmap'
 import { renderGalaxy } from '@industrieh/starmap-render'
 
-const route = findRoute(galaxy, 'sol', 'vega')
+const route = findRoute(galaxy, 'altair', 'lyra')
 
 const map = renderGalaxy(galaxy, {
   highlight: route?.systemIds,   // exactly what findRoute returns
@@ -249,6 +265,7 @@ const map = renderGalaxy(galaxy, {
 
       <RenderPreview
         svg={MAP}
+        alt="The galaxy map with the route from Altair to Lyra highlighted: Altair, Sol, Rigel and Lyra are ringed in the highlight colour, Vega is not."
         height="lg"
         caption={
           <>
@@ -275,18 +292,25 @@ const map = renderGalaxy(galaxy, {
       <CodeBlock
         lang="ts"
         code={`const svg = renderSystem(system, {
-  theme: { background: '#000', planets: { terran: '#7ee787' } },
+  t: 3,
+  theme: { background: '#0b0f0d', planets: { terran: '#7ee787', rocky: '#8b949e' } },
 })
 
-// background  → '#000'      your value
+// background  → '#0b0f0d'   your value
 // terran      → '#7ee787'   your value
+// rocky       → '#8b949e'   your value
 // gas         → '#d8a06a'   still the default — tables merge key by key`}
       />
 
       <RenderCompare
-        left={{ svg: FIRST, label: <>The default theme.</> }}
+        left={{
+          svg: FIRST,
+          alt: 'The Sol system in the default theme.',
+          label: <>The default theme.</>,
+        }}
         right={{
           svg: RECOLOURED,
+          alt: 'The Sol system recoloured: a near-black green background, a green terran planet and a grey rocky one.',
           label: (
             <>
               Three values changed — the background, and two planet colours. Everything else,

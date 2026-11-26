@@ -13,12 +13,14 @@ export const toc: readonly TocEntry[] = [
   { id: 'renderSystemContent', title: 'renderSystemContent', depth: 3 },
   { id: 'renderGalaxy', title: 'renderGalaxy', depth: 3 },
   { id: 'renderGalaxyContent', title: 'renderGalaxyContent', depth: 3 },
+  { id: 'layers', title: 'SYSTEM_LAYERS / GALAXY_LAYERS', depth: 3 },
   { id: 'options', title: 'Options', depth: 2 },
   { id: 'framing', title: 'Framing', depth: 2 },
   { id: 'systemViewBox', title: 'systemViewBox', depth: 3 },
   { id: 'galaxyViewBox', title: 'galaxyViewBox', depth: 3 },
   { id: 'viewBoxAttr', title: 'viewBoxAttr', depth: 3 },
   { id: 'svgDocument', title: 'svgDocument', depth: 3 },
+  { id: 'scales', title: 'systemScale / galaxyScale', depth: 3 },
   { id: 'shapes', title: 'Shapes', depth: 2 },
   { id: 'arcPath', title: 'arcPath', depth: 3 },
   { id: 'backdropStars', title: 'backdropStars', depth: 3 },
@@ -135,11 +137,40 @@ const map = renderGalaxy(galaxy, { highlight: route?.systemIds })`}
         }
       />
 
+      <ApiEntry
+        id="layers"
+        name="SYSTEM_LAYERS, GALAXY_LAYERS"
+        kind="constant"
+        signature={`const SYSTEM_LAYERS: readonly SystemLayer[]
+// ['defs', 'background', 'backdrop', 'orbits', 'fields', 'routes', 'star', 'planets', 'gates']
+
+const GALAXY_LAYERS: readonly GalaxyLayer[]
+// ['defs', 'background', 'backdrop', 'lanes', 'systems']`}
+        summary={
+          <>
+            Every layer of each drawing, bottom to top — the order they are always drawn in. Pass a
+            subset as the <C>layers</C> option and only those are computed, still in this order.
+          </>
+        }
+        example={`// Only routes and planets depend on t: draw the rest once…
+const still = renderSystemContent(system, {
+  layers: ['defs', 'background', 'backdrop', 'orbits', 'fields'],
+})
+// …and redraw just what moves, every frame.
+const moving = renderSystemContent(system, { t, layers: ['routes', 'planets'] })`}
+      >
+        <Callout tone="note" title="Layers stack, so a split needs care">
+          The <C>star</C> and the <C>gates</C> sit above the routes, and the gates above the
+          planets. Splitting a drawing into a still part and a moving part therefore means three
+          still groups around the two moving ones — or accepting that the routes pass over the star.
+        </Callout>
+      </ApiEntry>
+
       <H2 id="options">Options</H2>
       <P>
-        Both option types extend <C>DocumentOptions</C>, so <C>width</C>, <C>height</C> and{' '}
-        <C>title</C> are available on all four functions — the two <C>…Content</C> ones ignore them,
-        since they emit no root element.
+        Both option types extend <C>DocumentOptions</C>, so <C>width</C>, <C>height</C>,{' '}
+        <C>title</C> and <C>role</C> are available on all four functions — the two <C>…Content</C>{' '}
+        ones ignore them, since they emit no root element.
       </P>
 
       <PropsTable
@@ -162,7 +193,8 @@ const map = renderGalaxy(galaxy, { highlight: route?.systemIds })`}
             description: (
               <>
                 Colours. Anything left out is merged from the default —{' '}
-                <A href={routes.page('starmap-render', 'theming')}>Theming</A>.
+                <A href={routes.page('starmap-render', 'theming')}>Theming</A>. A theme returned by{' '}
+                <C>resolveTheme()</C> is used as is, with no merge.
               </>
             ),
           },
@@ -193,12 +225,15 @@ const map = renderGalaxy(galaxy, { highlight: route?.systemIds })`}
           {
             name: 'idPrefix',
             type: 'string',
-            defaultValue: "'starmap'",
+            defaultValue: "`starmap-<system id>` / 'starmap'",
             description: (
               <>
-                Prefix of the gradient ids this drawing declares. Two SVGs inlined on one page share
-                an id namespace, so give each its own —{' '}
+                Prefix of the gradient ids this drawing declares. The system default is built from
+                the system&apos;s id, so two systems inlined on one page never collide; pass your
+                own only to draw the <em>same</em> system twice with different themes —{' '}
                 <A href={`${routes.page('starmap-render', 'framing')}#ids`}>why it matters</A>.
+                Characters other than <C>[A-Za-z0-9_-]</C> become <C>_</C>, and a leading non-letter
+                gets a <C>_</C> in front.
               </>
             ),
           },
@@ -223,6 +258,18 @@ const map = renderGalaxy(galaxy, { highlight: route?.systemIds })`}
             ),
           },
           {
+            name: 'layers',
+            type: 'readonly SystemLayer[] / GalaxyLayer[]',
+            defaultValue: 'every layer',
+            description: (
+              <>
+                Draw only these, always in their usual order — <A href="#layers">the lists</A>. The
+                others are not even computed, which is what lets an animation draw the still layers
+                once and redraw only <C>routes</C> and <C>planets</C>.
+              </>
+            ),
+          },
+          {
             name: 'width, height',
             type: 'number',
             description:
@@ -235,6 +282,18 @@ const map = renderGalaxy(galaxy, { highlight: route?.systemIds })`}
               <>
                 Adds a <C>&lt;title&gt;</C> child and <C>role=&quot;img&quot;</C>, so a screen
                 reader announces the drawing instead of skipping it.
+              </>
+            ),
+          },
+          {
+            name: 'role',
+            type: 'string | false',
+            defaultValue: "'img' with a title",
+            description: (
+              <>
+                The root element&apos;s <C>role</C>. Pass <C>false</C> for an interactive drawing
+                whose objects you make reachable yourself — <C>role=&quot;img&quot;</C> hides
+                everything inside it from assistive technology. Any other string is written as is.
               </>
             ),
           },
@@ -309,7 +368,8 @@ const GALAXY_MARGIN = 0.12`}
           <>
             Wrap finished layers in a standalone document. Writes <C>xmlns</C>, which is what makes
             the string usable outside an HTML parser — a <C>.svg</C> file, a <C>data:</C> URI, an{' '}
-            <C>&lt;img src&gt;</C>.
+            <C>&lt;img src&gt;</C>. A <C>title</C> brings <C>role=&quot;img&quot;</C> with it,
+            unless <C>role</C> says otherwise.
           </>
         }
         example={`svgDocument({ x: 0, y: 0, w: 10, h: 10 }, '<circle r="1"/>', { title: 'T' })
@@ -318,6 +378,46 @@ const GALAXY_MARGIN = 0.12`}
 // <title>T</title>
 // <circle r="1"/>
 // </svg>`}
+      />
+
+      <ApiEntry
+        id="scales"
+        name="systemScale, galaxyScale"
+        kind="function"
+        signature={`function systemScale(view: ViewBox): SystemScale   // { u, k, font }
+function galaxyScale(view: ViewBox): GalaxyScale   // { dot, ring, glow, k, font }`}
+        summary={
+          <>
+            The exact sizes a drawing derives from its view — glyphs, strokes, labels are fractions
+            of it, so they hold up at any scale. Exported so an overlay drawn on top, a selection
+            ring or a ship, matches the drawing under it.
+          </>
+        }
+        params={[
+          {
+            name: 'view',
+            type: 'ViewBox',
+            description: (
+              <>
+                The drawing&apos;s framing — <C>systemViewBox()</C> or <C>galaxyViewBox()</C>, with
+                the same margin you render with.
+              </>
+            ),
+          },
+        ]}
+        returns={
+          <>
+            For a system: <C>u</C>, the spacing unit (a 200th of the view&apos;s width), <C>k</C>,
+            the stroke unit, and <C>font</C>. For a galaxy: the radii of a system&apos;s <C>dot</C>,{' '}
+            <C>ring</C> and <C>glow</C>, the stroke unit <C>k</C>, and <C>font</C>.
+          </>
+        }
+        example={`const view = galaxyViewBox(galaxy)
+const { ring, k } = galaxyScale(view)
+const sol = galaxy.systems[0]
+
+// A selection ring just outside the faction ring, at the drawing's own stroke width.
+el('circle', { cx: sol.x, cy: sol.y, r: ring * 1.8, fill: 'none', stroke: '#fff', 'stroke-width': k * 3 })`}
       />
 
       <H2 id="shapes">Shapes</H2>
@@ -355,7 +455,7 @@ arcPath(220, 0, 360)
   seed: string | number,
   scale?: number,
 ): BackdropStar[]`}
-        summary="A field of decorative stars, sown in a square centred on the origin. Deterministic: the same seed always gives the same sky."
+        summary="A field of decorative stars, sown in a square centred on the origin — renderGalaxy() then shifts it onto the centre of its view. Deterministic: the same seed always gives the same sky."
         params={[
           { name: 'count', type: 'number', description: 'How many.' },
           {
@@ -398,7 +498,9 @@ const DEFAULT_THEME: Theme`}
         summary={
           <>
             Fill a <C>ThemeInput</C> in from the default. Tables are merged key by key, so{' '}
-            <C>{`{ planets: { terran: '#7ee787' } }`}</C> keeps every other planet colour.
+            <C>{`{ planets: { terran: '#7ee787' } }`}</C> keeps every other planet colour. A theme
+            it returned before is handed back as is: resolve once, pass the result to every frame,
+            and no frame merges anything.
           </>
         }
         returns="A complete Theme — every field filled in, every table carrying its default entry."
@@ -425,12 +527,15 @@ function pickRouteStyle(table: RouteStyleMap, key: string | undefined): RouteSty
           <>
             Look a key up, falling back to the table&apos;s <C>default</C>. The core&apos;s
             vocabularies are open unions, so a table can never be exhaustive — which is why{' '}
-            <C>default</C> is required by the type.
+            <C>default</C> is required by the type. Only the table&apos;s own keys count: a planet
+            type named <C>constructor</C> gets the default, not something inherited from{' '}
+            <C>Object.prototype</C>.
           </>
         }
-        example={`pickColor(theme.planets, 'terran')      // '#7ee787'
-pickColor(theme.planets, 'shattered')   // '#8b8377' — the default
-pickColor(theme.planets, undefined)     // '#8b8377' — the default too`}
+        example={`pickColor(theme.planets, 'terran')        // '#7ee787'
+pickColor(theme.planets, 'shattered')     // '#8b8377' — the default
+pickColor(theme.planets, undefined)       // '#8b8377' — the default too
+pickColor(theme.planets, 'constructor')   // '#8b8377' — own keys only`}
       />
 
       <H2 id="primitives">String primitives</H2>
@@ -496,8 +601,9 @@ pickColor(theme.planets, undefined)     // '#8b8377' — the default too`}
             type: '=> string',
             description: (
               <>
-                Escapes <C>&amp;</C>, <C>&lt;</C>, <C>&gt;</C>, <C>&quot;</C> and <C>&apos;</C>.
-                Every name in a galaxy is user data.
+                Escapes <C>&amp;</C>, <C>&lt;</C>, <C>&gt;</C>, <C>&quot;</C> and <C>&apos;</C>, and
+                drops the control characters XML cannot hold at all. Every name in a galaxy is user
+                data.
               </>
             ),
           },
@@ -534,7 +640,25 @@ pickColor(theme.planets, undefined)     // '#8b8377' — the default too`}
             type: 'options',
             description: (
               <>
-                <C>{`{ width?, height?, title? }`}</C> — the root element.
+                <C>{`{ width?, height?, title?, role? }`}</C> — the root element.
+              </>
+            ),
+          },
+          {
+            name: 'SystemLayer, GalaxyLayer',
+            type: 'options',
+            description: (
+              <>
+                The layer names, for the <C>layers</C> option — <A href="#layers">the lists</A>.
+              </>
+            ),
+          },
+          {
+            name: 'SystemScale, GalaxyScale',
+            type: 'geometry',
+            description: (
+              <>
+                What <C>systemScale()</C> and <C>galaxyScale()</C> return.
               </>
             ),
           },
@@ -576,7 +700,9 @@ pickColor(theme.planets, undefined)     // '#8b8377' — the default too`}
             type: 'theme',
             description: (
               <>
-                <C>{`{ stroke, dash, width }`}</C>, and a table of them.
+                <C>{`{ stroke, dash, width }`}</C>, and a table of them. <C>dash</C> follows{' '}
+                <C>stroke-dasharray</C> syntax — lengths separated by spaces and/or commas; empty,{' '}
+                <C>none</C> or anything unreadable draws a solid line.
               </>
             ),
           },

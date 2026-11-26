@@ -15,6 +15,7 @@
  */
 
 import { LIBRARIES, SITE_URL, routes } from '@/lib/routes'
+import { versionOf } from '@/lib/versions'
 
 // `GET` handlers are dynamic by default since Next.js 15. This one reads
 // nothing per-request, so it is prerendered once at build time and served as a
@@ -35,13 +36,13 @@ function build(): string {
     'procedural generation is game design, rendering is UI design, and both stay',
     'yours. What they share is the data model.',
     '',
-    'Every page below is Markdown-friendly prose with runnable examples. For the',
-    'whole documentation as a single file, fetch `/llms-full.txt`.',
+    'The pages below are HTML, with runnable examples. For the documentation as',
+    'plain Markdown in a single file, fetch `/llms-full.txt`.',
     '',
   ]
 
   for (const library of LIBRARIES) {
-    lines.push(`## ${library.packageName} v${library.version} — ${library.tagline}`, '')
+    lines.push(`## ${library.packageName} v${versionOf(library.slug)} — ${library.tagline}`, '')
 
     for (const group of library.groups) {
       for (const page of group.pages) {

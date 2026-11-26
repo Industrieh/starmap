@@ -8,7 +8,7 @@
 
 import { describe, expect, test } from 'vitest'
 
-import { createGalaxy, FORMAT_VERSION, stationsOf } from '../src/index'
+import { createGalaxy, FORMAT_VERSION, stationsOf, type GalaxyInput } from '../src/index'
 import { universe } from './fixture'
 
 const galaxy = createGalaxy(universe)
@@ -63,6 +63,42 @@ describe('derived values', () => {
     expect(vega.outerLimit).toBe(400)
     // Kepler only has its star and its gate.
     expect(kepler.outerLimit).toBe(180)
+  })
+
+  test('outerLimit reaches the stations around the outermost planet', () => {
+    const g = createGalaxy({
+      systems: [
+        {
+          id: 's',
+          name: 'S',
+          x: 0,
+          y: 0,
+          star: { radius: 5 },
+          planets: [{ name: 'P', orbit: 100, radius: 5, stations: [{ name: 'St', orbit: 40 }] }],
+        },
+      ],
+    })
+    // The planet alone reaches 105; its station swings out to 100 + 40.
+    expect(g.systems[0].outerLimit).toBe(140)
+  })
+
+  test('outerLimit reaches a rock placed outside its field', () => {
+    const g = createGalaxy({
+      systems: [
+        {
+          id: 's',
+          name: 'S',
+          x: 0,
+          y: 0,
+          star: { radius: 5 },
+          asteroidFields: [
+            { kind: 'cluster', name: 'C', x: 0, y: 50, radius: 10, rocks: [[0, 90, 2]] },
+          ],
+        },
+      ],
+    })
+    // The cluster reaches 60; the rock at distance 90, radius 2, reaches 92.
+    expect(g.systems[0].outerLimit).toBe(92)
   })
 
   test('a system with nothing but a star gets that star radius', () => {
@@ -130,6 +166,24 @@ describe('nothing is invented', () => {
     for (const field of ['color', 'typeName', 'style', 'label']) {
       expect(serialized).not.toContain(`"${field}"`)
     }
+  })
+
+  test('the galaxy shares no object or array with its description', () => {
+    const input: GalaxyInput = JSON.parse(JSON.stringify(universe))
+    const built = createGalaxy(input)
+    const rocks = input.systems[0].asteroidFields?.[0].rocks
+    const links = input.systems[0].gates?.[0].links
+    if (!rocks || !links) throw new Error('fixture changed: Sol needs rocks and a linked gate')
+
+    rocks[0][0] = 999
+    rocks.push([1, 1, 1])
+    links.push('kepler')
+
+    expect(built.systems[0].asteroidFields[0].rocks).toEqual([
+      [200, 10, 2],
+      [-190, 40, 3],
+    ])
+    expect(built.systems[0].gates[0].links).toEqual(['vega'])
   })
 
   test('the input is never mutated', () => {

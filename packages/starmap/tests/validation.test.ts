@@ -95,6 +95,75 @@ describe('reported problems', () => {
     expect(issue?.message).toMatch(/belongs to b/)
   })
 
+  test('local route ids are unique too: no duplicate, no id taken by an object', () => {
+    const planets = [
+      { name: 'P0', orbit: 50, radius: 2 },
+      { name: 'P1', orbit: 80, radius: 2 },
+    ]
+    const p0 = { kind: 'planet', id: 'a-p0' } as const
+    const p1 = { kind: 'planet', id: 'a-p1' } as const
+
+    // Same two ends, no id given: both derive `a-p0>a-p1`.
+    const twice = raw({
+      systems: [
+        {
+          ...system('a'),
+          planets,
+          localRoutes: [
+            { from: p0, to: p1 },
+            { from: p0, to: p1, type: 'shortcut' },
+          ],
+        },
+      ],
+    })
+    expect(paths(twice)).toEqual(['systems[0].localRoutes[1].id'])
+
+    const taken = raw({
+      systems: [{ ...system('a'), planets, localRoutes: [{ id: 'a-p1', from: p0, to: p1 }] }],
+    })
+    expect(paths(taken)).toEqual(['systems[0].localRoutes[0].id'])
+
+    const sharedWithLane = raw({
+      systems: [
+        { ...system('a'), planets, localRoutes: [{ id: 'link', from: p0, to: p1 }] },
+        system('b', 100),
+      ],
+      lanes: [{ id: 'link', from: 'a', to: 'b' }],
+    })
+    expect(paths(sharedWithLane)).toEqual(['lanes[0].id'])
+  })
+
+  test('local route looping on one object', () => {
+    const galaxy = raw({
+      systems: [
+        {
+          ...system('a'),
+          planets: [{ name: 'P', orbit: 50, radius: 2 }],
+          localRoutes: [
+            { from: { kind: 'planet', id: 'a-p0' }, to: { kind: 'planet', id: 'a-p0' } },
+          ],
+        },
+      ],
+    })
+    expect(validateGalaxy(galaxy)).toEqual([
+      {
+        path: 'systems[0].localRoutes[0]',
+        message: 'a local route cannot link an object to itself',
+      },
+    ])
+  })
+
+  test('two different pairs of systems are never mistaken for one, whatever the ids contain', () => {
+    const galaxy = raw({
+      systems: [system('a|b'), system('c', 10), system('a', 20), system('b|c', 30)],
+      lanes: [
+        { from: 'a|b', to: 'c' },
+        { from: 'a', to: 'b|c' },
+      ],
+    })
+    expect(validateGalaxy(galaxy)).toEqual([])
+  })
+
   test('local route pointing at the wrong kind', () => {
     const galaxy = raw({
       systems: [

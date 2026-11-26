@@ -52,8 +52,9 @@ reach inside it. Everything it needs is already in the string.
 ```ts
 Bun.serve({
   routes: {
-    '/system/:id.svg': (req) => {
-      const system = index.get(req.params.id)
+    // `/system/:id.svg` would not work: Bun names that parameter `id.svg`.
+    '/system/:id': (req) => {
+      const system = index.get(req.params.id.replace(/\.svg$/, ''))
       if (!system) return new Response('unknown system', { status: 404 })
       return new Response(renderSystem(system, { title: system.name }), {
         headers: { 'content-type': 'image/svg+xml' },
@@ -70,7 +71,7 @@ produces the same bytes. Cache it as aggressively as you like.
 
 ```tsx
 function SystemView({ system, t }: { system: StarSystem; t: number }) {
-  const svg = useMemo(() => renderSystem(system, { t, idPrefix: system.id }), [system, t])
+  const svg = useMemo(() => renderSystem(system, { t }), [system, t])
   return <figure dangerouslySetInnerHTML={{ __html: svg }} />
 }
 ```
@@ -99,34 +100,44 @@ Negative works too.
 ## Animate it without rebuilding the string
 
 Replacing the whole markup 60 times a second is fine for a preview and wasteful
-for a real map. Draw the layers once, then move the objects — the `data-id`
-attributes are there for exactly this.
+for a real map: most of it — the backdrop alone is about 80 % of the output —
+never moves. Only two layers depend on `t`, `routes` and `planets` (stations
+ride with their planet). Draw everything else once, and redraw just those two:
 
 ```ts
-import { systemPositions } from '@industrieh/starmap'
-import { renderSystemContent, systemViewBox, viewBoxAttr } from '@industrieh/starmap-render'
+import {
+  renderSystemContent,
+  systemViewBox,
+  viewBoxAttr,
+  type SystemLayer,
+} from '@industrieh/starmap-render'
+
+const still = (layers: SystemLayer[]) => renderSystemContent(system, { layers })
 
 svgElement.setAttribute('viewBox', viewBoxAttr(systemViewBox(system)))
-svgElement.innerHTML = renderSystemContent(system, { t: 0 })
+// The layers keep their order: what is under the routes, the routes, the star,
+// the planets, and the gates on top.
+svgElement.innerHTML = [
+  still(['defs', 'background', 'backdrop', 'orbits', 'fields']),
+  '<g data-part="routes"></g>',
+  still(['star']),
+  '<g data-part="planets"></g>',
+  still(['gates']),
+].join('')
 
-const moving = new Map(
-  [...system.planets, ...system.gates].map((o) => [
-    o.id,
-    svgElement.querySelector(`[data-id="${o.id}"]`),
-  ]),
-)
+const routes = svgElement.querySelector('[data-part="routes"]')
+const planets = svgElement.querySelector('[data-part="planets"]')
 
 function update(t: number): void {
-  const pos = systemPositions(system, t)
-  for (const [id, node] of moving) {
-    const at = pos.get(id)
-    if (at) node.setAttribute('transform', `translate(${at.x} ${at.y})`)
-  }
+  routes.innerHTML = renderSystemContent(system, { t, layers: ['routes'] })
+  planets.innerHTML = renderSystemContent(system, { t, layers: ['planets'] })
 }
 ```
 
-Stations move with their planet on their own — their group sits inside the
-planet's, and its transform is relative.
+`layers` draws only what it lists, always in the usual order, and
+`SYSTEM_LAYERS` lists them all, bottom to top. Moving the planets' groups by hand
+— setting their `transform` from `systemPositions()` — works too, but then the
+local routes stay where they were: redraw that layer as well.
 
 ## Pan and zoom
 
@@ -153,14 +164,18 @@ Panning is the same idea: add your drag delta, in world units, to `view.x` and
 
 ## Handle clicks
 
-One listener on the container, because the markup can be replaced at any time:
+One listener on the container, because the markup can be replaced at any time —
+and on `pointerdown` rather than `click` if it is replaced every frame: a click
+needs the press and the release on the same element, and an animation that
+redraws between the two swallows it.
 
 ```ts
 import { indexGalaxy } from '@industrieh/starmap'
 
 const index = indexGalaxy(galaxy)
 
-container.addEventListener('click', (event) => {
+container.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return // the primary button only
   const node = (event.target as Element).closest('[data-id]')
   if (!node) return
   const entry = index.get(node.getAttribute('data-id'))
@@ -169,6 +184,8 @@ container.addEventListener('click', (event) => {
 ```
 
 `data-kind` is on the same group when you only need the kind, without a lookup.
+Hyperlanes and local routes carry one too — `lane` and `route` — so a handler
+can tell them from the objects: their ids are not in `indexGalaxy()`.
 
 A small planet is hard to hit. If that matters, widen the target with CSS —
 `[data-kind="planet"] { stroke: transparent; stroke-width: 12 }` — rather than
@@ -185,21 +202,27 @@ import {
   group,
   renderSystemContent,
   svgDocument,
+  systemScale,
   systemViewBox,
 } from '@industrieh/starmap-render'
 
+const view = systemViewBox(system)
+const { u } = systemScale(view) // the spacing unit the drawing itself uses
+
 const ships = group(
   { 'data-layer': 'ships', fill: '#fff' },
-  fleet.map((s) => el('circle', { cx: s.x, cy: s.y, r: 3, 'data-id': s.id })),
+  fleet.map((s) => el('circle', { cx: s.x, cy: s.y, r: u * 0.8, 'data-id': s.id })),
 )
 
-const svg = svgDocument(systemViewBox(system), `${renderSystemContent(system, { t })}\n${ships}`, {
+const svg = svgDocument(view, `${renderSystemContent(system, { t })}\n${ships}`, {
   title: system.name,
 })
 ```
 
 Coordinates in an overlay are world units in the system's frame — the same ones
-`systemPositions()` returns.
+`systemPositions()` returns. Sizes come from `systemScale()` (or `galaxyScale()`
+on the map), so a marker keeps its size against the drawing whatever the size of
+the system.
 
 ## Show a route on the map
 
@@ -231,14 +254,16 @@ when small.
 
 ## Put several drawings on one page
 
-Give each one its own `idPrefix`:
+Nothing to do:
 
 ```ts
-const svgs = galaxy.systems.map((s) => renderSystem(s, { idPrefix: s.id, width: 200, height: 200 }))
+const svgs = galaxy.systems.map((s) => renderSystem(s, { width: 200, height: 200 }))
 ```
 
-Gradient ids are global to the page. Without distinct prefixes, every drawing
-after the first would use the first one's star colour.
+Gradient ids are global to the page, so each drawing's are prefixed with its
+system's id — `starmap-sol-glow`, `starmap-vega-glow` — and never collide. Pass
+an `idPrefix` only to draw the **same** system twice on one page with two
+themes, or to put two galaxy maps with different themes side by side.
 
 ## Style it with CSS
 

@@ -8,7 +8,15 @@
 import { createGalaxy } from '@industrieh/starmap'
 import { describe, expect, test } from 'vitest'
 
-import { arcPath, backdropStars, galaxyViewBox, systemViewBox, viewBoxAttr } from '../src/index'
+import {
+  arcPath,
+  backdropStars,
+  galaxyScale,
+  galaxyViewBox,
+  systemScale,
+  systemViewBox,
+  viewBoxAttr,
+} from '../src/index'
 import { galaxy, sol } from './fixture'
 
 describe('systemViewBox', () => {
@@ -104,5 +112,19 @@ describe('backdropStars', () => {
 
   test('a count of zero draws no sky', () => {
     expect(backdropStars(0, 100, 'sol')).toEqual([])
+  })
+})
+
+describe('scales', () => {
+  test('a system scale is a fraction of the view width', () => {
+    const view = systemViewBox(sol)
+    expect(systemScale(view)).toEqual({ u: view.w / 200, k: view.w / 800, font: view.w / 65 })
+  })
+
+  test('a galaxy scale follows the larger side of the view', () => {
+    const wide = galaxyScale({ x: 0, y: 0, w: 1000, h: 10 })
+    const tall = galaxyScale({ x: 0, y: 0, w: 10, h: 1000 })
+    expect(wide).toEqual(tall)
+    expect(galaxyScale(galaxyViewBox(galaxy)).dot).toBeGreaterThan(0)
   })
 })

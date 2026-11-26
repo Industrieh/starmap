@@ -13,6 +13,13 @@
  * provided, so the library fills them in. A planet's type, a system's faction or
  * a field's richness do not, so they stay `undefined`.
  *
+ * A second rule keeps the errors useful: **normalization never guesses at a
+ * shape.** An entry that is not an object, or a collection that is not an
+ * array, is passed through untouched, and validation then reports it with its
+ * path. A description read from a JSON file therefore fails with a
+ * `GalaxyValidationError` naming every problem, not with the first `TypeError`
+ * the normalization would have tripped on.
+ *
  * @example A minimal universe
  * ```ts
  * const galaxy = createGalaxy({
@@ -30,6 +37,7 @@
  * ```
  */
 
+import { FORMAT_VERSION } from './format'
 import { round } from './geometry'
 import type {
   AsteroidFieldInput,
@@ -47,24 +55,21 @@ import type {
   Gate,
   Hyperlane,
   LocalRoute,
+  ObjectRef,
   Planet,
+  Rock,
+  Star,
   StarSystem,
   Station,
 } from './types'
-import { assertValidGalaxy } from './validate'
-
-/**
- * Version of the data contract. Bump it on every breaking change. A game can
- * compare it to `save.formatVersion` to detect that an old save no longer
- * matches the current shape.
- */
-export const FORMAT_VERSION = 2
+import { assertValidGalaxy, countContents } from './validate'
 
 export interface CreateGalaxyOptions {
   /**
-   * Check the finished galaxy and throw a {@link GalaxyValidationError} on the
-   * first problem found. Only turn this off on a hot path whose input you have
-   * already validated.
+   * Check the finished galaxy and throw a {@link GalaxyValidationError} listing
+   * every problem found. Only turn this off on a hot path whose input you have
+   * already validated: without it, a malformed description comes back as a
+   * malformed galaxy.
    * @default true
    */
   validate?: boolean
@@ -73,32 +78,29 @@ export interface CreateGalaxyOptions {
 /**
  * Build a complete universe from its description.
  *
+ * The result shares nothing with `input`: every object and array is a copy, so
+ * changing your description afterwards never changes the galaxy.
+ *
  * @throws {GalaxyValidationError} when the finished galaxy is inconsistent —
- * duplicate id, dangling reference, value out of range. `error.issues` holds
- * **every** problem found, not just the first one.
+ * duplicate id, dangling reference, value out of range, an entry of the wrong
+ * shape. `error.issues` holds **every** problem found, not just the first one.
  */
 export function createGalaxy(input: GalaxyInput, options: CreateGalaxyOptions = {}): Galaxy {
   if (!input || typeof input !== 'object' || !Array.isArray(input.systems)) {
     throw new TypeError('createGalaxy expects an object of the form { systems: SystemInput[] }')
   }
 
-  const systems = input.systems.map(normalizeSystem)
-  const byId = new Map(systems.map((s) => [s.id, s]))
-  const lanes = (input.lanes ?? []).map((l) => normalizeLane(l, byId))
+  const systems = normalizeList(input.systems, normalizeSystem)
+  const byId = new Map(systems.filter(isRecord).map((s) => [s.id, s]))
+  const lanes = normalizeList(input.lanes, (l) => normalizeLane(l, byId))
 
-  const planets = systems.flatMap((s) => s.planets)
   const galaxy: Galaxy = {
     meta: {
       seed: input.seed,
       generatedAt: input.generatedAt,
       formatVersion: FORMAT_VERSION,
-      systemCount: systems.length,
-      laneCount: lanes.length,
-      planetCount: planets.length,
-      stationCount: planets.reduce((n, p) => n + p.stations.length, 0),
-      gateCount: systems.reduce((n, s) => n + s.gates.length, 0),
-      asteroidFieldCount: systems.reduce((n, s) => n + s.asteroidFields.length, 0),
-      galaxyRadius: round(systems.reduce((r, s) => Math.max(r, Math.hypot(s.x, s.y)), 0)),
+      ...countContents(systems, lanes),
+      galaxyRadius: galaxyRadiusOf(systems),
     },
     systems,
     lanes,
@@ -110,30 +112,64 @@ export function createGalaxy(input: GalaxyInput, options: CreateGalaxyOptions = 
 
 // ---------------------------------------------------------------- internals
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
+
+/**
+ * Normalize an optional collection, entry by entry.
+ *
+ * - left out (`undefined`, or `null` from JSON) → an empty array;
+ * - not an array → returned untouched, for validation to report;
+ * - an entry that is not an object → kept as is, for the same reason.
+ */
+function normalizeList<In, Out>(
+  value: readonly In[] | null | undefined,
+  normalize: (entry: In, index: number) => Out,
+): Out[] {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value)) return value as unknown as Out[]
+  return value.map((entry: In, index: number) =>
+    isRecord(entry) ? normalize(entry, index) : (entry as unknown as Out),
+  )
+}
+
+/** A copy of an optional array — same pass-through rules as {@link normalizeList}. */
+function copyList<T>(value: readonly T[] | null | undefined): T[] {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value)) return value as unknown as T[]
+  return [...value]
+}
+
 function normalizeSystem(input: SystemInput): StarSystem {
   const id = input.id
-  const planets = (input.planets ?? []).map((p, i) => normalizePlanet(p, id, i))
-  const gates = (input.gates ?? []).map((g, i) => normalizeGate(g, id, i))
-  const fields = (input.asteroidFields ?? []).map((f, i) => normalizeField(f, id, i))
+  const planets = normalizeList(input.planets, (p, i) => normalizePlanet(p, id, i))
+  const gates = normalizeList(input.gates, (g, i) => normalizeGate(g, id, i))
+  const fields = normalizeList(input.asteroidFields, (f, i) => normalizeField(f, id, i))
+  const star = input.star
 
   return {
     id,
     name: input.name,
     x: input.x,
     y: input.y,
-    faction: input.faction ? { id: input.faction.id, name: input.faction.name } : undefined,
+    faction: isRecord(input.faction)
+      ? { id: input.faction.id, name: input.faction.name }
+      : (input.faction ?? undefined),
     security: input.security,
-    star: {
-      id: input.star?.id ?? `${id}-star`,
-      name: input.star?.name ?? input.name,
-      class: input.star?.class,
-      radius: input.star?.radius,
-    },
+    // A missing star stays missing, so that validation says exactly that.
+    star: isRecord(star)
+      ? {
+          id: star.id ?? `${id}-star`,
+          name: star.name ?? input.name,
+          class: star.class,
+          radius: star.radius,
+        }
+      : (star as unknown as Star),
     planets,
     asteroidFields: fields,
     gates,
-    outerLimit: input.outerLimit ?? outerLimitOf(input.star?.radius, planets, gates, fields),
-    localRoutes: (input.localRoutes ?? []).map(normalizeLocalRoute),
+    outerLimit: input.outerLimit ?? outerLimitOf(star?.radius, planets, gates, fields),
+    localRoutes: normalizeList(input.localRoutes, normalizeLocalRoute),
   }
 }
 
@@ -151,7 +187,7 @@ function normalizePlanet(input: PlanetInput, systemId: string, index: number): P
     moons: input.moons,
     habitable: input.habitable,
     resources: input.resources,
-    stations: (input.stations ?? []).map((s, i) => normalizeStation(s, id, i)),
+    stations: normalizeList(input.stations, (s, i) => normalizeStation(s, id, i)),
   }
 }
 
@@ -174,7 +210,7 @@ function normalizeGate(input: GateInput, systemId: string, index: number): Gate 
     name: input.name,
     orbit: input.orbit,
     angle: input.angle ?? 0,
-    links: [...(input.links ?? [])],
+    links: copyList(input.links),
     status: input.status ?? 'nominal',
   }
 }
@@ -184,28 +220,44 @@ function normalizeField(input: AsteroidFieldInput, systemId: string, index: numb
     id: input.id ?? `${systemId}-ast${index}`,
     name: input.name,
     density: input.density,
-    rocks: input.rocks ?? [],
+    rocks: copyRocks(input.rocks),
     richness: input.richness,
   }
-  return input.kind === 'belt'
-    ? {
-        ...common,
-        kind: 'belt',
-        orbit: input.orbit,
-        width: input.width,
-        arcStart: input.arcStart,
-        arcSweep: input.arcSweep,
-      }
-    : { ...common, kind: 'cluster', x: input.x, y: input.y, radius: input.radius }
+  if (input.kind === 'belt') {
+    return {
+      ...common,
+      kind: 'belt',
+      orbit: input.orbit,
+      width: input.width,
+      arcStart: input.arcStart,
+      arcSweep: input.arcSweep,
+    }
+  }
+  if (input.kind === 'cluster') {
+    return { ...common, kind: 'cluster', x: input.x, y: input.y, radius: input.radius }
+  }
+  // An unknown kind is not quietly turned into a cluster: everything is kept,
+  // and validation reports the kind itself.
+  return { ...(input as object), ...common } as AsteroidField
+}
+
+/** Each rock is a tuple, so it is copied too. */
+function copyRocks(rocks: readonly Rock[] | null | undefined): Rock[] {
+  if (!Array.isArray(rocks)) return copyList(rocks)
+  return rocks.map((rock: unknown) => (Array.isArray(rock) ? ([...rock] as Rock) : (rock as Rock)))
 }
 
 function normalizeLocalRoute(input: LocalRouteInput): LocalRoute {
   return {
     id: input.id ?? `${input.from?.id}>${input.to?.id}`,
-    from: { kind: input.from?.kind, id: input.from?.id },
-    to: { kind: input.to?.kind, id: input.to?.id },
+    from: copyRef(input.from),
+    to: copyRef(input.to),
     type: input.type,
   }
+}
+
+function copyRef(ref: ObjectRef): ObjectRef {
+  return isRecord(ref) ? { kind: ref.kind, id: ref.id } : ref
 }
 
 function normalizeLane(input: LaneInput, byId: ReadonlyMap<string, StarSystem>): Hyperlane {
@@ -225,23 +277,54 @@ function normalizeLane(input: LaneInput, byId: ReadonlyMap<string, StarSystem>):
 }
 
 /**
- * A system's edge: how far its contents reach, with no margin added. Pass
- * `outerLimit` yourself if you want empty space past the outermost object.
+ * Radius of the disc enclosing every system, from the origin. A position that
+ * is not a finite number is skipped: validation reports it on its own, and a
+ * `NaN` radius would only add a second, misleading problem.
+ */
+function galaxyRadiusOf(systems: readonly StarSystem[]): number {
+  let radius = 0
+  for (const s of systems) {
+    const d = isRecord(s) ? Math.hypot(s.x, s.y) : Number.NaN
+    if (Number.isFinite(d) && d > radius) radius = d
+  }
+  return round(radius)
+}
+
+/** The entries of a collection that are objects. Anything else is validation's business. */
+function records<T>(list: readonly T[]): T[] {
+  return Array.isArray(list) ? list.filter((entry: T) => isRecord(entry)) : []
+}
+
+/**
+ * A system's edge: how far its contents reach, with no margin added — the
+ * star, every planet **and the stations around it**, every gate, every
+ * asteroid field **and its rocks**. Pass `outerLimit` yourself if you want
+ * empty space past the outermost object.
  */
 function outerLimitOf(
-  starRadius: number,
+  starRadius: unknown,
   planets: readonly Planet[],
   gates: readonly Gate[],
   fields: readonly AsteroidField[],
 ): number {
-  const reaches = [
-    starRadius,
-    ...planets.map((p) => p.orbit + p.radius),
-    ...gates.map((g) => g.orbit),
-    ...fields.map((f) =>
-      f.kind === 'belt' ? f.orbit + f.width / 2 : Math.hypot(f.x, f.y) + f.radius,
-    ),
-  ].filter((n) => Number.isFinite(n))
+  let reach = typeof starRadius === 'number' && Number.isFinite(starRadius) ? starRadius : 0
+  const consider = (n: number): void => {
+    if (Number.isFinite(n) && n > reach) reach = n
+  }
 
-  return reaches.length ? round(Math.max(...reaches)) : 0
+  for (const p of records(planets)) {
+    consider(p.orbit + p.radius)
+    // A station circles its planet, so at its farthest it sits a full station
+    // orbit beyond the planet's.
+    for (const st of records(p.stations)) consider(p.orbit + st.orbit)
+  }
+  for (const g of records(gates)) consider(g.orbit)
+  for (const f of records(fields)) {
+    consider(f.kind === 'belt' ? f.orbit + f.width / 2 : Math.hypot(f.x, f.y) + f.radius)
+    for (const rock of Array.isArray(f.rocks) ? f.rocks : []) {
+      if (Array.isArray(rock)) consider(Math.hypot(rock[0], rock[1]) + rock[2])
+    }
+  }
+
+  return round(reach)
 }

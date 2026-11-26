@@ -10,9 +10,11 @@ import { describe, expect, test } from 'vitest'
 import {
   connectedComponents,
   createGalaxy,
+  createRng,
   fieldCenter,
   findRoute,
   indexGalaxy,
+  indexNetwork,
   indexSystems,
   lanesOf,
   neighboursOf,
@@ -20,6 +22,9 @@ import {
   stationsOf,
   systemOf,
   systemPositions,
+  type Galaxy,
+  type LaneInput,
+  type SystemInput,
   type Vec2,
 } from '../src/index'
 import { universe } from './fixture'
@@ -160,6 +165,123 @@ describe('routes', () => {
     expect(findRoute(line, 'a', 'c')?.systemIds).toEqual(['a', 'b', 'c'])
   })
 })
+
+describe('a prebuilt network', () => {
+  const network = indexNetwork(galaxy)
+
+  test('gives exactly the answers the galaxy gives', () => {
+    for (const a of galaxy.systems) {
+      expect(lanesOf(network, a.id)).toEqual(lanesOf(galaxy, a.id))
+      expect(neighboursOf(network, a.id)).toEqual(neighboursOf(galaxy, a.id))
+      for (const b of galaxy.systems) {
+        expect(findRoute(network, a.id, b.id)).toEqual(findRoute(galaxy, a.id, b.id))
+      }
+    }
+    expect(connectedComponents(network)).toEqual(connectedComponents(galaxy))
+  })
+
+  test('lists every lane of a system once, in the galaxy order', () => {
+    expect(network.lanes.get('vega')?.map((l) => l.id)).toEqual(galaxy.lanes.map((l) => l.id))
+    expect(network.systems.get('kepler')).toBe(kepler)
+  })
+})
+
+describe('routes on generated networks', () => {
+  test('always the shortest distance, checked against Floyd–Warshall', () => {
+    const rng = createRng('routes')
+    for (let run = 0; run < 25; run++) {
+      const g = randomGalaxy(rng, rng.randInt(2, 30))
+      const best = allPairs(g)
+      const network = indexNetwork(g)
+      for (const a of g.systems) {
+        for (const b of g.systems) {
+          const route = findRoute(network, a.id, b.id)
+          const expected = best.get(`${a.id}>${b.id}`) ?? Infinity
+          if (expected === Infinity) {
+            expect(route).toBeNull()
+            continue
+          }
+          expect(route?.distance).toBeCloseTo(expected, 9)
+          // And the route is a real path whose lanes add up to that distance.
+          const ids = route?.systemIds ?? []
+          let walked = 0
+          for (let i = 1; i < ids.length; i++) walked += laneLength(g, ids[i - 1], ids[i])
+          expect(walked).toBeCloseTo(expected, 9)
+        }
+      }
+    }
+  })
+
+  test('among equally short routes, the galaxy order decides — never chance', () => {
+    expect(findRoute(diamond(['a', 'b', 'c', 'd']), 'a', 'd')?.systemIds).toEqual(['a', 'b', 'd'])
+    expect(findRoute(diamond(['a', 'c', 'b', 'd']), 'a', 'd')?.systemIds).toEqual(['a', 'c', 'd'])
+  })
+})
+
+/** Two routes of the same length from `a` to `d`, systems listed in `order`. */
+function diamond(order: string[]): Galaxy {
+  return createGalaxy({
+    systems: order.map((id, i) => ({ id, name: id, x: i, y: 0, star: { radius: 1 } })),
+    lanes: [
+      { from: 'a', to: 'b', length: 1 },
+      { from: 'a', to: 'c', length: 1 },
+      { from: 'b', to: 'd', length: 1 },
+      { from: 'c', to: 'd', length: 1 },
+    ],
+  })
+}
+
+/** A random universe: positions, and lanes between random pairs, some of them overridden in length. */
+function randomGalaxy(rng: ReturnType<typeof createRng>, count: number): Galaxy {
+  const systems: SystemInput[] = Array.from({ length: count }, (_, i) => ({
+    id: `s${i}`,
+    name: `S${i}`,
+    x: rng.randInt(0, 1000),
+    y: rng.randInt(0, 1000),
+    star: { radius: 5 },
+  }))
+  const lanes: LaneInput[] = []
+  const linked = new Set<string>()
+  for (let n = rng.randInt(0, count * 2); n > 0; n--) {
+    const a = rng.randInt(0, count - 1)
+    const b = rng.randInt(0, count - 1)
+    const key = a < b ? `${a}-${b}` : `${b}-${a}`
+    if (a === b || linked.has(key)) continue
+    linked.add(key)
+    lanes.push({
+      from: `s${a}`,
+      to: `s${b}`,
+      length: rng.chance(0.3) ? rng.randInt(0, 50) : undefined,
+    })
+  }
+  return createGalaxy({ systems, lanes })
+}
+
+/** Every shortest distance, by Floyd–Warshall: slow, obvious, and independent of findRoute. */
+function allPairs(g: Galaxy): Map<string, number> {
+  const ids = g.systems.map((s) => s.id)
+  const d = new Map<string, number>()
+  for (const a of ids) for (const b of ids) d.set(`${a}>${b}`, a === b ? 0 : Infinity)
+  for (const l of g.lanes) {
+    d.set(`${l.from}>${l.to}`, Math.min(d.get(`${l.from}>${l.to}`) ?? Infinity, l.length))
+    d.set(`${l.to}>${l.from}`, Math.min(d.get(`${l.to}>${l.from}`) ?? Infinity, l.length))
+  }
+  for (const k of ids) {
+    for (const a of ids) {
+      for (const b of ids) {
+        const through = (d.get(`${a}>${k}`) ?? Infinity) + (d.get(`${k}>${b}`) ?? Infinity)
+        if (through < (d.get(`${a}>${b}`) ?? Infinity)) d.set(`${a}>${b}`, through)
+      }
+    }
+  }
+  return d
+}
+
+function laneLength(g: Galaxy, a: string, b: string): number {
+  const lane = g.lanes.find((l) => (l.from === a && l.to === b) || (l.from === b && l.to === a))
+  if (!lane) throw new Error(`no lane between ${a} and ${b}`)
+  return lane.length
+}
 
 describe('geometry', () => {
   test('an orbit with period zero never moves', () => {

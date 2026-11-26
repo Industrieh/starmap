@@ -12,6 +12,10 @@ import { routes } from '@/lib/routes'
 
 const T = 4
 
+// Each drawing below names its own prefix even though most need none: the same
+// Sol appears on this page several times, and that is the one case where two
+// drawings could share gradient ids.
+
 const DEFAULT_MARGIN = renderSystem(SOL, { t: T, idPrefix: 'fr-default' })
 const NO_MARGIN = renderSystem(SOL, { t: T, idPrefix: 'fr-crop', margin: 0 })
 const BIG_MARGIN = renderSystem(SOL, { t: T, idPrefix: 'fr-room', margin: 1.2 })
@@ -109,6 +113,7 @@ viewBoxAttr(systemViewBox(system))   // '-435 -435 870 870'`}
       <RenderCompare
         left={{
           svg: NO_MARGIN,
+          alt: 'The Sol system cropped tight to its gate orbit, with no margin around it.',
           label: (
             <>
               <C>margin: 0</C> — cropped to the outermost object, which here is the gate&apos;s
@@ -118,6 +123,7 @@ viewBoxAttr(systemViewBox(system))   // '-435 -435 870 870'`}
         }}
         right={{
           svg: DEFAULT_MARGIN,
+          alt: 'The Sol system with the default margin around it.',
           label: (
             <>
               The default <C>0.45</C>. The same drawing, with room to breathe around it.
@@ -133,6 +139,7 @@ viewBoxAttr(systemViewBox(system))   // '-435 -435 870 870'`}
 
       <RenderPreview
         svg={BIG_MARGIN}
+        alt="The Sol system small in the middle of the frame, a wide empty margin around it."
         height="sm"
         code={`renderSystem(system, { margin: 1.2 })`}
         caption="margin: 1.2 — the system now occupies less than half the frame, and everything outside it is yours."
@@ -196,6 +203,7 @@ renderSystem(system, { width: 700, height: 700 }) // exactly 700×700 pixels`}
 
       <RenderPreview
         svg={DEFAULT_MARGIN}
+        alt="The Sol system in a frame wider than it is tall, its dark background running edge to edge."
         height="sm"
         caption="Every frame on this page is wider than it is tall, and the system inside it is square — so all of them are letterboxed. The reason you cannot tell is the oversized rectangle: the dark background runs edge to edge instead of stopping at the viewBox."
       />
@@ -260,21 +268,37 @@ return new Response(renderSystem(system), {
       <H2 id="ids">Two drawings on one page</H2>
       <P>
         A drawing declares gradients in <C>&lt;defs&gt;</C>, and{' '}
-        <strong>SVG ids are global to the page</strong>. Two systems inlined side by side with the
-        same prefix would both reference the first one&apos;s gradients — so the second one wears
-        the first one&apos;s star colour.
+        <strong>SVG ids are global to the page</strong>. Two drawings inlined side by side with the
+        same prefix would both reference the first one&apos;s gradients — and the gradients carry
+        the star&apos;s colour, so the second would wear the first one&apos;s.
+      </P>
+
+      <P>
+        That is why a system&apos;s prefix defaults to <C>starmap-</C> followed by its own id: two
+        different systems never collide, with nothing to pass. The one case left is the{' '}
+        <em>same</em> system drawn twice, in themes that change its gradients — its star colours, or{' '}
+        <C>light</C> and <C>shade</C>.
       </P>
 
       <CodeBlock
         lang="ts"
-        code={`// Wrong — both drawings declare #starmap-glow.
+        code={`// Two systems: nothing to do.
 container.innerHTML = renderSystem(sol) + renderSystem(vega)
+// → #starmap-sol-glow and #starmap-vega-glow
 
-// Right — the system's own id is a natural prefix.
+// The same system twice, its star recoloured in one: give that one a prefix.
 container.innerHTML =
-  renderSystem(sol,  { idPrefix: sol.id }) +
-  renderSystem(vega, { idPrefix: vega.id })`}
+  renderSystem(sol) +
+  renderSystem(sol, { theme: { stars: { G: '#ff9d5c' } }, idPrefix: 'sol-warm' })`}
       />
+
+      <P>
+        A prefix is cleaned up on the way in: characters an XML id cannot hold become <C>_</C>, and
+        a leading non-letter gets one in front — a system called <C>alpha centauri</C> declares{' '}
+        <C>#starmap-alpha_centauri-glow</C>, not a broken reference. The galaxy map keeps a fixed
+        default, <C>starmap</C>; two maps on one page need prefixes of their own only if their
+        themes differ.
+      </P>
 
       <Callout tone="tip" title="It only matters when inlining">
         A <C>data:</C> URI and an <C>&lt;img&gt;</C> each get their own document, so ids cannot
@@ -298,6 +322,7 @@ container.innerHTML =
 
       <RenderPreview
         svg={TITLED}
+        alt="The Sol system."
         height="sm"
         caption="Visually identical, and announced as “Sol — 2 planets” instead of skipped. Hover it and your browser will show the title too."
       />
@@ -306,6 +331,19 @@ container.innerHTML =
         Without it there is no <C>role</C> and no title, which is the right default for a purely
         decorative drawing. Say something useful, or say nothing.
       </P>
+
+      <P>
+        An interactive drawing wants something else again. <C>role=&quot;img&quot;</C> presents the
+        drawing as one picture and hides everything inside it from assistive technology — the right
+        call for an illustration, the wrong one for a map whose systems can be selected. Pass{' '}
+        <C>role: false</C> to keep the title and drop the role, then make the objects reachable
+        yourself:
+      </P>
+
+      <CodeBlock
+        lang="ts"
+        code={`renderSystem(system, { title: 'Sol', role: false })   // a <title>, no role="img"`}
+      />
 
       <P>
         Colour is not the only channel:{' '}

@@ -18,7 +18,14 @@ import { cn } from '@/lib/utils'
  * toggle without a single line of JavaScript.
  */
 
-const LANGUAGES = ['ts', 'tsx', 'bash', 'json', 'md'] as const satisfies readonly BundledLanguage[]
+const LANGUAGES = [
+  'ts',
+  'tsx',
+  'bash',
+  'json',
+  'md',
+  'xml',
+] as const satisfies readonly BundledLanguage[]
 
 /**
  * One highlighter for the whole build rather than one per page. Creating it
@@ -72,11 +79,13 @@ export async function CodeBlock({
       ) : null}
 
       {!noCopy ? (
-        // Always present so the layout never shifts; revealed on hover, and
-        // permanently visible once focused, so it stays reachable by keyboard.
+        // Always present so the layout never shifts. Revealed on hover, and
+        // visible whenever focus is inside the block, so it stays reachable by
+        // keyboard — and always visible on a device that cannot hover at all,
+        // where "on hover" would mean never.
         <CopyButton
           value={trimmed}
-          className="absolute top-2 right-2 z-10 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+          className="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
         />
       ) : null}
 

@@ -28,7 +28,7 @@ packages/starmap-render/
     core/
       svg.ts          escaping, number formatting, element building
       theme.ts        Theme, ThemeInput, DEFAULT_THEME, resolveTheme
-      geometry.ts     framing, arcs, backdrop
+      geometry.ts     framing, scales, arcs, backdrop
       root.ts         the <svg> element around a drawing
       system.ts       renderSystem(), renderSystemContent()
       galaxy.ts       renderGalaxy(), renderGalaxyContent()
@@ -40,6 +40,7 @@ packages/starmap-render/
     geometry.test.ts  framing, arcs, determinism
     system.test.ts    the system drawing
     galaxy.test.ts    the galaxy drawing
+    snapshots.test.ts golden drawings, kept in __snapshots__/ as .svg files
     purity.test.ts    the house rule, file by file
   docs/               theming, drawing, recipes, this file
 ```
@@ -68,8 +69,8 @@ systemViewBox()     the frame — everything else is a fraction of it
 systemPositions()   where every object is at t          (from the core)
       │
       ▼
-draw* functions     one per layer, each returning a string
-      │
+draw* functions     one per layer, each returning a string — only the layers
+      │             asked for are computed (`layers`, in SYSTEM_LAYERS order)
       ▼
 join('\n')          the layers                          → renderSystemContent()
 svgDocument()       the <svg> around them               → renderSystem()
@@ -143,7 +144,11 @@ rather than about the world:
 - `arcPath` — belts. Past 359.5° it emits two half circles, because one SVG arc
   cannot close a circle.
 - `backdropStars` — scenery, on its own seed. It reuses `mulberry32` and
-  `hashSeed` from the core rather than carrying its own PRNG.
+  `hashSeed` from the core rather than carrying its own PRNG. It sows a square
+  centred on the origin: the system drawing is centred there already, and the
+  galaxy drawing offsets the stars onto the centre of its view.
+- `systemScale`, `galaxyScale` — the size units of each drawing, exported so an
+  overlay can match them.
 
 The `scale` parameter on `backdropStars` is there because dots are sized in
 world units: a galaxy-wide view needs bigger ones than a single system for the
@@ -154,7 +159,8 @@ sky to look the same.
 One function, `svgDocument(view, body, options)`. It writes `xmlns` — which is
 what makes the string usable outside an HTML parser — `viewBox`,
 `preserveAspectRatio`, optional pixel dimensions, and an optional `<title>` with
-`role="img"` beside it.
+`role="img"` beside it. `role: false` drops the role for an interactive drawing,
+whose objects `role="img"` would hide from assistive technology.
 
 The file is called `root.ts` and not `document.ts` because `purity.test.ts`
 rejects the word `document` anywhere in the sources, import paths included. The
@@ -163,10 +169,17 @@ check is worth more than the better file name.
 ## `system.ts` and `galaxy.ts` — the drawings
 
 Both files have the same shape: a public pair (`renderX` / `renderXContent`), a
-`Scale` computed from the view, then one `draw*` function per layer, each
-returning a string and none of them touching anything outside its arguments.
+scale computed from the view, then one `draw*` function per layer, each
+returning a string and none of them touching anything outside its arguments. A
+record maps each layer name to its function, and `renderXContent()` walks
+`SYSTEM_LAYERS` / `GALAXY_LAYERS` in order, calling only the ones asked for —
+system positions are computed only if a layer needs them.
 
-`system.ts` carries the `Scale` that matters most:
+The gradient ids are prefixed with `idPrefixOf(options.idPrefix ?? …)`, which
+replaces anything an XML id cannot hold. The system's default prefix is built
+from its id, so drawings of different systems never share a gradient.
+
+`systemScale()` returns the scale that matters most:
 
 | name   | value          | used for                        |
 | ------ | -------------- | ------------------------------- |
@@ -179,10 +192,11 @@ would fill the view in one and vanish in the other. What keeps its real size is
 everything the model states: star radius, planet radius, orbits, belt width,
 rock positions.
 
-`galaxy.ts` has its own `Scale`, expressed as fractions of the largest dimension,
-and one thing `system.ts` does not: `pathPairs()` turns the `highlight` path into
-the set of lane keys to light. A lane key is its two endpoints sorted, because a
-hyperlane is undirected — `['a','b']` and `['b','a']` are the same lane.
+`galaxy.ts` has its own scale, `galaxyScale()`, expressed as fractions of the
+largest dimension, and one thing `system.ts` does not: `pathPairs()` turns the
+`highlight` path into the set of lane keys to light. A lane key is its two
+endpoints in order, as JSON, because a hyperlane is undirected — `['a','b']` and
+`['b','a']` are the same lane — and JSON keeps ids holding any separator apart.
 
 Both draw functions tolerate references that resolve to nothing. A lane whose
 endpoint does not exist, a route pointing at a missing object: they are skipped
@@ -211,20 +225,27 @@ The first two are enforced by `tests/purity.test.ts`, and by
 
 ## The tests
 
-| file               | covers                                                  |
-| ------------------ | ------------------------------------------------------- |
-| `fixture.ts`       | one universe with one of everything drawable            |
-| `xml.ts`           | tag balance and unescaped text, without a parser        |
-| `svg.test.ts`      | escaping, rounding, attribute dropping, empty groups    |
-| `theme.test.ts`    | merging, fallbacks, and that the default is not mutated |
-| `geometry.test.ts` | framing, degenerate galaxies, arcs, determinism         |
-| `system.test.ts`   | layers, ids, positions at `t`, options, labels          |
-| `galaxy.test.ts`   | lanes, highlighting, escaping, an empty galaxy          |
-| `purity.test.ts`   | the house rule, file by file                            |
+| file                | covers                                                  |
+| ------------------- | ------------------------------------------------------- |
+| `fixture.ts`        | one universe with one of everything drawable            |
+| `xml.ts`            | tag balance and unescaped text, without a parser        |
+| `svg.test.ts`       | escaping, rounding, attribute dropping, empty groups    |
+| `theme.test.ts`     | merging, fallbacks, and that the default is not mutated |
+| `geometry.test.ts`  | framing, degenerate galaxies, arcs, scales, determinism |
+| `system.test.ts`    | layers, ids, positions at `t`, options, labels          |
+| `galaxy.test.ts`    | lanes, highlighting, escaping, backdrop, an empty map   |
+| `snapshots.test.ts` | three golden drawings, kept as real `.svg` files        |
+| `purity.test.ts`    | the house rule, file by file                            |
 
 The assertions are on what ends up in the string — an object's group, an id, a
 colour — not on exact markup. Pinning the markup down would turn every visual
 improvement into a failing test.
+
+The one exception is `snapshots.test.ts`, deliberately: three drawings pinned to
+`tests/__snapshots__/*.svg`, which open as pictures. Loose assertions let a
+visual regression through — the galaxy backdrop once covered only a corner of
+any map not centred on the origin — and a golden file does not. When a change to
+the look is intended, open the new files, then run `bunx vitest run -u`.
 
 The fixture is built with `createGalaxy()`, so it is validated on the way in.
 A drawing test can never fail because the fixture drifted out of the data
@@ -237,6 +258,7 @@ contract.
 | change how an object looks        | the `draw*` function in `system.ts`, `docs/drawing.md`        |
 | add a colour                      | `theme.ts` (both `Theme` and `ThemeInput`), `docs/theming.md` |
 | add a render option               | the options interface, the destructuring, the README table    |
+| add a layer                       | the layer type and list, the `draw` record, `docs/drawing.md` |
 | change the framing                | `geometry.ts`, `geometry.test.ts`                             |
 | add an attribute to every element | `svg.ts`, and nowhere else                                    |
 | draw a new kind of object         | a new `draw*` function, plus its place in the layer order     |

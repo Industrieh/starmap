@@ -32,7 +32,8 @@
  */
 
 // --- building
-export { createGalaxy, FORMAT_VERSION, type CreateGalaxyOptions } from './core/create'
+export { createGalaxy, type CreateGalaxyOptions } from './core/create'
+export { FORMAT_VERSION } from './core/format'
 
 // --- the input schema
 export type {
@@ -69,6 +70,7 @@ export {
   connectedComponents,
   findRoute,
   indexGalaxy,
+  indexNetwork,
   indexSystems,
   lanesOf,
   neighboursOf,
@@ -90,6 +92,7 @@ export type {
   Gate,
   GateStatus,
   Hyperlane,
+  HyperlaneNetwork,
   IndexEntry,
   LocalRoute,
   ObjectKind,

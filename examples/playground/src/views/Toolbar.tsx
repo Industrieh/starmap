@@ -10,6 +10,7 @@ import { useState, type FormEvent, type JSX } from 'react'
 
 import type { ThemeName } from '../themes'
 import { BUTTON, BUTTON_ON, FIELD } from '../ui'
+import { clampSystemCount, SYSTEM_COUNT } from '../universe/generate'
 
 export interface ToolbarProps {
   seed: string
@@ -23,13 +24,26 @@ export interface ToolbarProps {
 
 export function Toolbar(props: ToolbarProps): JSX.Element {
   // The fields are local until submitted, so typing a seed does not rebuild the
-  // galaxy on every keystroke.
+  // galaxy on every keystroke. The count is kept as typed — a string — so the
+  // field can be cleared or hold a half-typed number without being rewritten
+  // under the cursor; it becomes a number when a galaxy is generated.
   const [seed, setSeed] = useState(props.seed)
-  const [count, setCount] = useState(props.systemCount)
+  const [count, setCount] = useState(String(props.systemCount))
+
+  /**
+   * Both buttons end here. The input's `min` and `max` only stop a *submitted*
+   * form, so "Surprise me" — or an empty field — would slip past them: the count
+   * is clamped instead, and the field shows what was actually used.
+   */
+  const generate = (nextSeed: string): void => {
+    const systemCount = clampSystemCount(count.trim() === '' ? Number.NaN : Number(count))
+    setCount(String(systemCount))
+    props.onGenerate(nextSeed, systemCount)
+  }
 
   const submit = (event: FormEvent): void => {
     event.preventDefault()
-    props.onGenerate(seed.trim() || 'starmap', count)
+    generate(seed.trim() || 'starmap')
   }
 
   const surprise = (): void => {
@@ -37,7 +51,7 @@ export function Toolbar(props: ToolbarProps): JSX.Element {
     // generator itself never calls it — that is what makes a seed reproducible.
     const next = Math.random().toString(36).slice(2, 8)
     setSeed(next)
-    props.onGenerate(next, count)
+    generate(next)
   }
 
   return (
@@ -59,10 +73,11 @@ export function Toolbar(props: ToolbarProps): JSX.Element {
         <input
           className={`${FIELD} w-18`}
           type="number"
-          min={2}
-          max={60}
+          min={SYSTEM_COUNT.min}
+          max={SYSTEM_COUNT.max}
+          step={1}
           value={count}
-          onChange={(e) => setCount(Number(e.target.value))}
+          onChange={(e) => setCount(e.target.value)}
         />
       </label>
 

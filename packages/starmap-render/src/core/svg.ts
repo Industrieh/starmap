@@ -21,17 +21,28 @@ export type AttrValue = string | number | boolean | undefined | null
 export type Attrs = Readonly<Record<string, AttrValue>>
 
 /**
- * Escape text for XML: `&`, `<`, `>`, `"` and `'`.
+ * Characters XML 1.0 cannot carry at all, escaped or not: the C0 controls other
+ * than tab, line feed and carriage return, and the non-characters U+FFFE and
+ * U+FFFF.
+ */
+// oxlint-disable-next-line no-control-regex -- matching control characters is the point
+const XML_FORBIDDEN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g
+
+/**
+ * Escape text for XML: `&`, `<`, `>`, `"` and `'` — and drop the characters
+ * XML cannot hold at all.
  *
  * Every name in a galaxy is user data. A system called `Ohm & Sons` breaks the
- * document without this, and a name carrying a tag would inject markup into
- * whatever page embeds the output.
+ * document without this, a name carrying a tag would inject markup into
+ * whatever page embeds the output, and a stray control character makes a `.svg`
+ * file that strict XML readers refuse.
  *
  * `&` is replaced first, otherwise it would re-escape the entities added after
  * it.
  */
 export function escapeXml(value: string): string {
   return value
+    .replace(XML_FORBIDDEN, '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -112,6 +123,20 @@ export function background(view: ViewBox, fill: string): string {
  */
 export function dash(...lengths: readonly number[]): string {
   return lengths.map(num).join(' ')
+}
+
+/**
+ * Make a string safe to use as the start of an XML `id`, and inside the
+ * `url(#…)` that references it.
+ *
+ * Ids are free-form in the model, so a prefix built from one may hold a space
+ * or a bracket — and `url(#alpha centauri-glow)` points nowhere, silently.
+ * Anything but letters, digits, `-` and `_` becomes `_`, and a prefix that does
+ * not start with a letter or `_` gets one in front.
+ */
+export function idPrefixOf(raw: string): string {
+  const safe = raw.replaceAll(/[^A-Za-z0-9_-]/g, '_')
+  return /^[A-Za-z_]/.test(safe) ? safe : `_${safe}`
 }
 
 /** A `<text>` element. The content is escaped; callers pass raw names. */

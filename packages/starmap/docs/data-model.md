@@ -44,7 +44,8 @@ when you reorder an array. Otherwise they are derived:
 | `lane-<from>-<to>`   | `lane-sol-alpha` | hyperlane      |
 | `<fromId>><toId>`    | `sol-p1>sol-p2`  | local route    |
 
-Ids must be unique across the whole galaxy, hyperlanes included.
+Ids must be unique across the whole galaxy, local routes and hyperlanes
+included.
 
 Watch out for collisions between an id you provide and one that gets derived.
 Validation catches them:
@@ -104,9 +105,12 @@ save, to detect that the data contract has moved on.
 | `security`       | optional     | `0` lawless to `1` safe                              |
 | `outerLimit`     | derived      | how far the contents reach, **with no margin added** |
 
-`outerLimit` is `max(star radius, planet orbit + radius, gate orbits, field
-reach)`. If you want empty space past the outermost object, pass the value
-yourself — a margin is an aesthetic choice, not a calculation.
+`outerLimit` is `max(star radius, planet orbit + radius, planet orbit + station
+orbit, gate orbits, field reach, rock reach)` — a station circles its planet, so
+at its farthest it sits a full station orbit beyond the planet's, and a rock may
+lie outside the shape of its field. If you want empty space past the outermost
+object, pass the value yourself — a margin is an aesthetic choice, not a
+calculation.
 
 ## `StarInput` → `Star`
 

@@ -321,7 +321,10 @@ function frame(dt: number) {
 
       <P>
         The error carries <C>issues</C>, an array of <C>{`{ path, message }`}</C> — every problem,
-        located precisely. That is the point: fixing five mistakes should take one run, not five.
+        located precisely. That is the point: fixing five mistakes should take one run, not five. It
+        covers a description of the wrong shape too — a planet that is not an object, a system with
+        no star — reported with its path like any other mistake, never as a <C>TypeError</C> from
+        somewhere inside the library.
       </P>
 
       <P>
@@ -331,14 +334,18 @@ function frame(dt: number) {
 
       <CodeBlock
         lang="ts"
-        code={`import { validateGalaxy, type Galaxy } from '@industrieh/starmap'
+        code={`import { assertValidGalaxy, validateGalaxy } from '@industrieh/starmap'
 
-const galaxy = JSON.parse(saveFile) as Galaxy
-const issues = validateGalaxy(galaxy)      // never throws, whatever you pass it
+const data: unknown = JSON.parse(saveFile)
+const issues = validateGalaxy(data)      // never throws, whatever you pass it
 
 if (issues.length) {
   console.error('This save is not loadable:', issues)
-}`}
+}
+
+// Or the throwing form, which also tells TypeScript what it now holds:
+assertValidGalaxy(data)
+data.systems                             // typed as a Galaxy from here on`}
       />
 
       <P>

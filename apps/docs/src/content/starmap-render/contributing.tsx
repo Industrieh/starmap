@@ -23,6 +23,7 @@ export const toc: readonly TocEntry[] = [
   { id: 'tests', title: 'Writing tests', depth: 2 },
   { id: 'comments', title: 'Comments and docs', depth: 2 },
   { id: 'style', title: 'Style', depth: 2 },
+  { id: 'changeset', title: 'Add a changeset', depth: 2 },
   { id: 'sending', title: 'Sending a change', depth: 2 },
   { id: 'bugs', title: 'Reporting a bug', depth: 2 },
 ]
@@ -180,9 +181,10 @@ bun run check`}
         </Step>
       </Steps>
 
-      <Callout tone="warning" title="Sizes go through the file's Scale">
-        <C>u</C>, <C>k</C>, <C>font</C> — never absolute units. A drawing has to hold up in a system
-        300 units across and in one 30 000 units across.
+      <Callout tone="warning" title="Sizes go through the scale">
+        <C>systemScale()</C>&apos;s <C>u</C>, <C>k</C>, <C>font</C> — or <C>galaxyScale()</C> on the
+        map — never absolute units. A drawing has to hold up in a system 300 units across and in one
+        30 000 units across, and applications size their overlays with the same two functions.
       </Callout>
 
       <H3 id="colour">Add a colour</H3>
@@ -221,7 +223,8 @@ bun run check`}
       <H3 id="object">Add a drawable object</H3>
       <UL>
         <LI>
-          A <C>draw*</C> function returning a string, and its place in the layer order — order{' '}
+          A <C>draw*</C> function returning a string, and its place in the layer order —{' '}
+          <C>SYSTEM_LAYERS</C> or <C>GALAXY_LAYERS</C>, and the matching layer type. Order{' '}
           <em>is</em> the composition, SVG has no <C>z-index</C>.
         </LI>
         <LI>
@@ -372,11 +375,73 @@ el('circle', { r: star.radius * 6, fill: \`url(#\${prefix}-glow)\` })`}
         </LI>
       </UL>
 
+      <H2 id="changeset">Add a changeset</H2>
+      <P>
+        <strong>
+          A pull request that changes what the published package draws or exposes carries a
+          changeset.
+        </strong>{' '}
+        Without one, the change is merged and never released. From the repo root:
+      </P>
+
+      <CodeBlock lang="bash" code="bun run changeset" />
+
+      <P>
+        It asks which packages changed, how big the bump is, and for a summary, then writes a
+        Markdown file in <C>.changeset/</C> — commit it along with your change. Pick the bump by
+        what the change does to the output or the API:
+      </P>
+
+      <UL>
+        <LI>
+          <strong>patch</strong> — a drawing fix, a tuned number, a colour correction; same API.
+        </LI>
+        <LI>
+          <strong>minor</strong> — a new render option, a new theme key, a new drawable object.
+        </LI>
+        <LI>
+          <strong>major</strong> — a removed or renamed export or option, a changed <C>data-*</C>{' '}
+          contract.
+        </LI>
+      </UL>
+
+      <P>
+        A visual change is a real change. Someone snapshot-testing their drawings will see it, so it
+        gets a changeset even when no signature moved. The summary lands in the CHANGELOG, where it
+        is read by someone upgrading — say what changed <em>for them</em>, not what you did to the
+        code:
+      </P>
+
+      <CodeBlock
+        lang="md"
+        code={`---
+'@industrieh/starmap-render': minor
+---
+
+\`renderSystem()\` now takes a \`labels\` option. Set it to \`false\` to draw a system
+without any text — useful for thumbnails.`}
+      />
+
+      <P>
+        Some pull requests need no changeset: docs, tests, CI, tooling, and anything touching only{' '}
+        <C>apps/</C> or <C>examples/</C> — those are private and never published. When in doubt, add
+        one; an extra patch entry costs nothing.
+      </P>
+
+      <Callout tone="note" title="Why the version is not the one you picked">
+        The repo is in pre-release mode (<C>.changeset/pre.json</C>, tag <C>beta</C>), so bumps come
+        out as <C>0.1.0-beta.N</C>. What happens next is not yours to do: pushing to <C>main</C>{' '}
+        opens or updates a <C>chore: version packages</C> pull request, merging it bumps the
+        versions and writes the CHANGELOGs, and publishing a GitHub release ships to npm.{' '}
+        <C>bun run changeset:status</C> lists what is waiting.
+      </Callout>
+
       <H2 id="sending">Sending a change</H2>
       <CodeBlock
         lang="bash"
         code={`git checkout -b feat/short-description
 bun run check
+bun run changeset
 git commit -m "feat: draw rings on ice giants"`}
       />
 
