@@ -11,6 +11,11 @@ The maintainer grants these rights durably — there is no need to ask first:
   (`fix(packages/starmap): …`, `feat(apps/docs): …`, `chore(ci): …`);
 - **push** them, and **open or update a pull request** with `gh`.
 
+`.claude/settings.json` turns these rights into Claude Code permission rules:
+`git add`, `git commit`, `git push` of a branch and `gh pr create/edit/view/
+checks/comment` run without a prompt, while force-pushes, pushing `main` and
+`gh pr merge` are denied. Keep the two files in step.
+
 Guardrails that still apply:
 
 - Never commit on `main`: create a branch first (`fix/…`, `feat/…`), or keep
