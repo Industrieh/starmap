@@ -459,7 +459,10 @@ and doing it manually desynchronises the changelogs.
    changesets, and the Version workflow runs the check suite on that branch. A
    pull request opened with `GITHUB_TOKEN` does not trigger CI by itself, so the
    result shows on the workflow run rather than as a check on the pull request.
-   **Merging it is what decides a release exists.**
+   **Merging it is what decides a release exists.** The bot needs "Allow GitHub
+   Actions to create and approve pull requests" ticked once, in the
+   organization's and then the repository's Actions settings — see the top of
+   [`version.yml`](.github/workflows/version.yml).
 3. Publishing a GitHub release from the resulting commit runs the full check
    suite and, if green, publishes to npm — each package after the ones it
    depends on.

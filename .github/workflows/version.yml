@@ -13,6 +13,21 @@
 # machine, committed by hand, does exactly the same thing. Delete this file if
 # you would rather not have a bot opening pull requests.
 #
+# `changeset:version` ends with `oxfmt`: Changesets writes `.changeset/pre.json`
+# in its own shape (one array item per line), which `oxfmt --check` rejects —
+# and the version branch would then fail CI.
+#
+# ## One-time setup: let Actions open pull requests
+#
+# GitHub refuses by default: the action pushes `changeset-release/main`, then
+# fails with "GitHub Actions is not permitted to create or approve pull
+# requests". Tick "Allow GitHub Actions to create and approve pull requests" in
+# Settings → Actions → General → Workflow permissions. The repository belongs to
+# an organization, so tick it in the organization's settings first — until then
+# the repository's checkbox is greyed out. The rest of the page can stay at
+# "Read repository contents": the `permissions:` block below asks for what this
+# workflow needs.
+#
 # ## Checking the version pull request
 #
 # A pull request opened with the default `GITHUB_TOKEN` does not trigger any
