@@ -8,12 +8,20 @@
 #
 # Actions only. The npm dependencies follow `bun.lock`, which is a decision of
 # its own (see `scripts/relock.ts`).
+#
+# One action is held at its major: `changesets/action` v2 requires Changesets
+# CLI v3, and this repo is on `@changesets/cli` v2. Bumping it alone broke the
+# Version workflow ("Changesets CLI v2 is not supported"). Upgrade the CLI and
+# the action in the same pull request, then drop the `ignore` entry.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: changesets/action
+        update-types: ['version-update:semver-major']
     groups:
       github-actions:
         patterns: ['*']
