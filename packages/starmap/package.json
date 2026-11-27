@@ -1,6 +1,6 @@
 {
   "name": "@industrieh/starmap",
-  "version": "0.1.0-beta.0",
+  "version": "0.1.0-beta.1",
   "description": "A typed star-system model for JS/TS games: describe, validate, query. No dependencies, no rendering.",
   "keywords": [
     "galaxy",

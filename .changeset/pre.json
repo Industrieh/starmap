@@ -9,5 +9,5 @@
     "@industrieh/starmap": "0.0.0",
     "@industrieh/starmap-render": "0.0.0"
   },
-  "changesets": ["first-public-beta"]
+  "changesets": ["first-public-beta", "review-fixes"]
 }
