@@ -86,8 +86,12 @@ jobs:
 
       # No `publish:` input on purpose — without it the action only ever opens
       # the version pull request. npm is out of its reach.
+      #
+      # Stays on v1: v2 only works with Changesets CLI v3 and stops at once
+      # against the v2 CLI this repo uses. `.github/dependabot.yml` holds back
+      # its major updates — move both together.
       - id: changesets
-        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           version: bun run changeset:version
           title: 'chore: version packages'
