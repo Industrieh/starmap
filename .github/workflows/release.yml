@@ -38,7 +38,7 @@ jobs:
     # Actions are pinned to full commit SHAs — this job holds the npm token, so a
     # moved tag must not be able to change the code that sees it. See `ci.yml`.
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -48,7 +48,7 @@ jobs:
       # the one that rewrites the `workspace:` ranges. npm is only used by the
       # publish script to ask the registry whether a version already exists,
       # which needs no credentials.
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
 
