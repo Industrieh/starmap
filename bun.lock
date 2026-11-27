@@ -73,7 +73,7 @@
     },
     "packages/starmap": {
       "name": "@industrieh/starmap",
-      "version": "0.1.0-beta.0",
+      "version": "0.1.0-beta.1",
       "devDependencies": {
         "tsdown": "^0.22.14",
         "vitest": "^4.1.10",
@@ -81,7 +81,7 @@
     },
     "packages/starmap-render": {
       "name": "@industrieh/starmap-render",
-      "version": "0.1.0-beta.0",
+      "version": "0.1.0-beta.1",
       "dependencies": {
         "@industrieh/starmap": "workspace:^",
       },

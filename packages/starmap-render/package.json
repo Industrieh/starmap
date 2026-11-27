@@ -1,6 +1,6 @@
 {
   "name": "@industrieh/starmap-render",
-  "version": "0.1.0-beta.0",
+  "version": "0.1.0-beta.1",
   "description": "Turn a @industrieh/starmap universe into SVG. Strings, not components: no DOM, no framework.",
   "keywords": [
     "galaxy",
